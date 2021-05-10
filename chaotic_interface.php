@@ -91,6 +91,16 @@ class SinuChaotic implements ChaoticInterface
     }
 }
 
+class Cosine implements ChaoticInterface
+{
+    public $I;
+
+    public function chaotic($t_max)
+    {
+       return cos( ($this->I * pi()) / $t_max);
+    }
+}
+
 /**
  * Chaotic algorithm selection
  *
@@ -102,30 +112,19 @@ class ChaoticFactory
 {
     public function initializeChaotic($type, $iteration)
     {
-        if ($type === 'bernoulli') {
-            return new BernoulliChaotic();
-        }
-        if ($type === 'chebyshev') {
-            return new ChebyshevChaotic($iteration);
-        }
-        if ($type === 'circle') {
-            return new CircleChaotic();
-        }
-        if ($type === 'gauss') {
-            return new GaussChaotic();
-        }
-        if ($type === 'logistic') {
-            return new LogisticChaotic();
-        }
-        if ($type === 'sine') {
-            return new SineChaotic();
-        }
-        if ($type === 'singer') {
-            return new SingerChaotic();
-        }
-        if ($type === 'sinu') {
-            return new SinuChaotic();
-        }
+        $types = [
+            ['chaos' => 'bernoulli', 'chaotic' => new BernoulliChaotic()],
+            ['chaos' => 'chebyshev', 'chaotic' => new ChebyshevChaotic($iteration)],
+            ['chaos' => 'circle', 'chaotic' => new CircleChaotic()],
+            ['chaos' => 'gauss', 'chaotic' => new GaussChaotic()],
+            ['chaos' => 'logistic', 'chaotic' => new LogisticChaotic()],
+            ['chaos' => 'sine', 'chaotic' => new SineChaotic()],
+            ['chaos' => 'singer', 'chaotic' => new SingerChaotic()],
+            ['chaos' => 'sinu', 'chaotic' => new SinuChaotic()],
+            ['chaos' => 'cosine', 'chaotic' => new Cosine()]
+        ];
+        $index = array_search($type, array_column($types, 'chaos'));
+        return $types[$index]['chaotic'];
     }
 }
 

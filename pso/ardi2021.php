@@ -20,6 +20,14 @@ class MPUCWPSO
     private $INERTIA_MIN = 0.4;
     private $C1 = 2;
     private $C2 = 2;
+    private $swarm_size;
+    private $range_positions;
+
+    function __construct($swarm_size, $range_positions){
+        $this->swarm_size = $swarm_size;
+        $this->range_positions = $range_positions;
+    }
+
 
     /**
      * Membangkitkan nilai acak dari 0..1
@@ -27,47 +35,6 @@ class MPUCWPSO
     function randomZeroToOne()
     {
         return (float) rand() / (float) getrandmax();
-    }
-
-    /**
-     * Generate random Simple Use Case Complexity weight parameter
-     * Min = 5,     xMinSimple = 4.5
-     * Max = 7.49   xMaxSimple = 8.239
-     */
-    function randomSimpleUCWeight()
-    {
-        $MIN = 5;
-        $MAX = 7.49;
-        return mt_rand($MIN * 100, $MAX * 100) / 100;
-    }
-
-    /**
-     * Generate random Average Use Case Complexity weight parameter
-     * Min = 7.5    xMinAverage = 6.75
-     * Max = 12.49  xMaxAverage = 13.739
-     */
-    function randomAverageUCWeight()
-    {
-        $MIN = 7.5;
-        $MAX = 12.49;
-        return mt_rand($MIN * 100, $MAX * 100) / 100;
-    }
-
-    /**
-     * Generate random Complex Use Case Complexity weight parameter
-     * Min = 12.5   xMinComplex = 11.25
-     * Max = 15     xMaxComplex = 16.5
-     */
-    function randomComplexUCWeight()
-    {
-        $MIN = 12.5;
-        $MAX = 15;
-        return mt_rand($MIN * 100, $MAX * 100) / 100;
-    }
-
-    function chaoticSinusoidal($value)
-    {
-        return (2.3 * POW($value, 2)) * sin(pi() * $value);
     }
 
     /**
@@ -83,27 +50,72 @@ class MPUCWPSO
         return $arrPartikel[array_search(min($ae), $ae)];
     }
 
+    function uniformInitialization()
+    {
+        $D = 3;
+        $n = $this->swarm_size;
+        $X1 = $this->randomUCWeight();
+        for ($i = 1; $i <= $n - 1; $i++) {
+            $R[$i] = $this->randomUCWeight();
+        }
+        foreach ($R as $key => $r){
+            $xSimple = $X1['xSimple'] + $r['xSimple'] / $n * ($this->range_positions['max_xSimple']- $this->range_positions['min_xSimple']);
+            $xAverage = $X1['xAverage'] + $r['xAverage'] / $n * ($this->range_positions['max_xAverage']- $this->range_positions['min_xAverage']);
+            $xComplex = $X1['xComplex'] + $r['xComplex'] / $n * ($this->range_positions['max_xComplex']- $this->range_positions['min_xComplex']);
+
+            if ($xSimple > $this->range_positions['max_xSimple']){
+                $xSimple = $xSimple - ($this->range_positions['max_xSimple']- $this->range_positions['min_xSimple']);
+            }
+            if ($xAverage > $this->range_positions['max_xAverage']){
+                $xAverage = $xAverage - ($this->range_positions['max_xAverage']- $this->range_positions['min_xAverage']);
+            }
+            if ($xComplex > $this->range_positions['max_xComplex']){
+                $xComplex = $xComplex - ($this->range_positions['max_xComplex']- $this->range_positions['min_xComplex']);
+            }
+            
+            if (($key-1) == 0){
+                $ret[0] = $X1;
+            }
+            $ret[$key] = ['xSimple'=>$xSimple, 'xAverage'=>$xAverage, 'xComplex'=>$xComplex];
+        }
+        return $ret;
+    }
+
+    function randomUCWeight()
+    {
+        $ret['xSimple'] = mt_rand($this->range_positions['min_xSimple'] * 100, $this->range_positions['max_xSimple'] * 100) / 100;
+        $ret['xAverage'] = mt_rand($this->range_positions['min_xAverage'] * 100, $this->range_positions['max_xAverage'] * 100) / 100;
+        $ret['xComplex'] = mt_rand($this->range_positions['min_xComplex'] * 100, $this->range_positions['max_xComplex'] * 100) / 100;
+        return $ret;
+    }
+
+    function size($positions, $projects)
+    {
+        $ucSimple = $positions['xSimple'] * $projects['simpleUC'];
+        $ucAverage = $positions['xAverage'] * $projects['averageUC'];
+        $ucComplex = $positions['xComplex'] * $projects['complexUC'];
+
+        $UUCW = $ucSimple + $ucAverage + $ucComplex;
+        $UUCP = $projects['uaw'] + $UUCW;
+        return $UUCP * $projects['tcf'] * $projects['ecf'];
+    }
+
     function Main($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type)
     {
         ##Generate Population
         for ($i = 0; $i <= $swarm_size - 1; $i++) {
-            $xSimple = $this->randomSimpleUCWeight();
-            $xAverage = $this->randomAverageUCWeight();
-            $xComplex = $this->randomComplexUCWeight();
 
-            $ucSimple = $xSimple * $dataset['simpleUC'];
-            $ucAverage = $xAverage * $dataset['averageUC'];
-            $ucComplex = $xComplex * $dataset['complexUC'];
-
-            $UUCW = $ucSimple + $ucAverage + $ucComplex;
-            $UUCP = $UUCW + $dataset['uaw'];
-            $UCP = $UUCP * $dataset['tcf'] * $dataset['ecf'];
-
+            $positions = $this->uniformInitialization()[$i];
+            //print_r($dataset);
+            //echo '<p>';
+            //print_r($positions);
+//            dd($dataset);
+            $UCP = $this->size($positions, $dataset);
             $partikelAwal[$i]['estimatedEffort'] = $UCP * $this->PRODUCTIVITY_FACTOR;
             $partikelAwal[$i]['ae'] = abs($partikelAwal[$i]['estimatedEffort'] - $dataset['actualEffort']);
-            $partikelAwal[$i]['xSimple'] = $xSimple;
-            $partikelAwal[$i]['xAverage'] = $xAverage;
-            $partikelAwal[$i]['xComplex'] = $xComplex;
+            $partikelAwal[$i]['xSimple'] = $positions['xSimple'];
+            $partikelAwal[$i]['xAverage'] = $positions['xAverage'];
+            $partikelAwal[$i]['xComplex'] = $positions['xComplex'];
         }
 
         //echo '<p>';
@@ -173,7 +185,6 @@ class MPUCWPSO
 
             $chaoticFactory = new ChaoticFactory();
             $chaos = $chaoticFactory->initializeChaotic($chaotic_type, $iterasi);
-
 
             if ($iterasi == 0) {
                 $R1[$iterasi] = $chaos->chaotic(0.7);
@@ -425,16 +436,16 @@ class MPUCWPSO
         return $results[$index];
     } // End of main()
 
-    function size($xSimple, $simpleUC, $xAverage, $averageUC, $xComplex, $complexUC, $uaw, $tcf, $ecf)
-    {
-        $ucSimple = $xSimple * $simpleUC;
-        $ucAverage = $xAverage * $averageUC;
-        $ucComplex = $xComplex * $complexUC;
+    // function size($xSimple, $simpleUC, $xAverage, $averageUC, $xComplex, $complexUC, $uaw, $tcf, $ecf)
+    // {
+    //     $ucSimple = $xSimple * $simpleUC;
+    //     $ucAverage = $xAverage * $averageUC;
+    //     $ucComplex = $xComplex * $complexUC;
 
-        $UUCW = $ucSimple + $ucAverage + $ucComplex;
-        $UUCP = $uaw + $UUCW;
-        return $UUCP * $tcf * $ecf;
-    }
+    //     $UUCW = $ucSimple + $ucAverage + $ucComplex;
+    //     $UUCP = $uaw + $UUCW;
+    //     return $UUCP * $tcf * $ecf;
+    // }
 
     function finishing($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type, $max_trial)
     {
@@ -446,9 +457,10 @@ class MPUCWPSO
                 $xSimple = array_sum(array_column($results, 'xSimple')) / $max_trial;
                 $xAverage = array_sum(array_column($results, 'xAverage')) / $max_trial;
                 $xComplex = array_sum(array_column($results, 'xComplex')) / $max_trial;
+                $positions = ['xSimple'=>$xSimple, 'xAverage'=>$xAverage, 'xComplex'=>$xComplex];
                 $results = [];
 
-                $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
+                $UCP = $this->size($positions, $project);
 
                 $estimated_effort = $UCP * $this->PRODUCTIVITY_FACTOR;
                 $ae = abs($estimated_effort - floatval($project['actualEffort']));
@@ -555,8 +567,11 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
+//        'particle_size' => array(10),
+        'chaotic' => array('sinu'),
+
         'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
-        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+        // 'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
@@ -568,8 +583,9 @@ foreach ($combinations as $key => $combination) {
     $max_counter = 100000;
 
     $start = microtime(true);
+    $range_positions = ['min_xSimple' => 5, 'max_xSimple' => 7.49, 'min_xAverage' => 7.5, 'max_xAverage' => 12.49, 'min_xComplex' => 12.5, 'max_xComplex' => 15];
 
-    $mpucwPSO = new MPUCWPSO();
+    $mpucwPSO = new MPUCWPSO($swarm_size, $range_positions);
     $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
 
     $mae = array_sum(array_column($optimized, 'ae')) / 71;
@@ -579,7 +595,7 @@ foreach ($combinations as $key => $combination) {
     echo '<br>';
     
     $data = array($mae, $combination['particle_size'], $combination['chaotic']);
-    $fp = fopen('results/proposed_mpso.txt', 'a');
+    $fp = fopen('results/ardi2021.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }

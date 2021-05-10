@@ -70,4 +70,3 @@ p=60 CRao 1 Gauss Trial 1000 MAE: 1008.4531057175 Uniform initialization
 1105.12
 151.28000000006
 133.265
-
