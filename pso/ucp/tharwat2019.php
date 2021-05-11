@@ -194,8 +194,6 @@ class PSO
                     $partikel[$iterasi][$i]['vComplex'] = $vComplex;
                 } //End of particle loop
 
-                //$diversities[$iterasi] = $this->diversity($partikel[$iterasi]);
-
                 //bandingan Partikel_i(t) dengan PBest_i(t-1)
                 foreach ($partikel as $val) {
                     foreach ($val as $key => $x) {

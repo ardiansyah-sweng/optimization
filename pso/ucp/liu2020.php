@@ -104,10 +104,6 @@ class ParticleSwarmOptimizer
         return $inertia * $velocity + ($this->C1 * $R1) * ($Pbest - $position) + ($this->C2 * $R2) * ($Gbest - $position);
     }
 
-    function chebyshev($iteration, $chaos_value)
-    {
-        return cos($iteration * cos(pow($chaos_value, -1)));
-    }
 
     function comparePbests($Pbests, $particles)
     {
@@ -237,10 +233,6 @@ class ParticleSwarmOptimizer
 
     function findSolution($project)
     {
-        $vMaxSimple = 2.49;
-        $vMaxAverage = 4.99;
-        $vMaxComplex = 2.5;
-
         $arrLimit = array(
             'xSimple' => array('xSimpleMin' => 5, 'xSimpleMax' => 7.49),
             'xAverage' => array('xAverageMin' => 7.5, 'xAverageMax' => 12.49),
@@ -328,6 +320,25 @@ class ParticleSwarmOptimizer
                         $xComplex = $xComplex + $vComplex;
                     }
                    
+                    if ($xSimple < $arrLimit['xSimple']['xSimpleMin']) {
+                        $xSimple = $arrLimit['xSimple']['xSimpleMin'];
+                    }
+                    if ($xSimple > $arrLimit['xSimple']['xSimpleMax']) {
+                        $xSimple = $arrLimit['xSimple']['xSimpleMax'];
+                    }
+                    if ($xAverage < $arrLimit['xAverage']['xAverageMin']) {
+                        $xAverage = $arrLimit['xAverage']['xAverageMin'];
+                    }
+                    if ($xAverage > $arrLimit['xAverage']['xAverageMax']) {
+                        $xAverage = $arrLimit['xAverage']['xAverageMax'];
+                    }
+                    if ($xComplex < $arrLimit['xComplex']['xComplexMin']) {
+                        $xComplex = $arrLimit['xComplex']['xComplexMin'];
+                    }
+                    if ($xComplex > $arrLimit['xComplex']['xComplexMax']) {
+                        $xComplex = $arrLimit['xComplex']['xComplexMax'];
+                    }
+
                     $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
                     $esimated_effort = $UCP * $this->productivity_factor;
 
@@ -372,8 +383,6 @@ class ParticleSwarmOptimizer
                 for ($i = 0; $i <= $this->trials - 1; $i++) {
                     $results[] = $this->findSolution($project);
                 }
-                print_r($results);
-                dd($results);
                 $xSimple = array_sum(array_column($results, 'xSimple')) / $this->trials ;
                 $xAverage = array_sum(array_column($results, 'xAverage')) / $this->trials ;
                 $xComplex = array_sum(array_column($results, 'xComplex')) / $this->trials ;
@@ -381,7 +390,7 @@ class ParticleSwarmOptimizer
 
                 $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
 
-                $estimated_effort = $UCP * $this->PRODUCTIVITY_FACTOR;
+                $estimated_effort = $UCP * $this->productivity_factor;
                 $ae = abs($estimated_effort - floatval($project['actualEffort']));
                 $ret[] = array('actualEffort' => $project['actualEffort'], 'estimatedEffort' => $estimated_effort, 'ucp' => $UCP, 'ae' => $ae, 'xSimple' => $xSimple, 'xAverage' => $xAverage, 'xComplex' => $xComplex);
             }
