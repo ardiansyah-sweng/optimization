@@ -23,7 +23,6 @@ Sine initial chaos = random
 1012.2578570837,90
 1012.5135208531,100
 
-
 r1 singer, r2 sine initial chaos = random
 1026.4247616228,10
 1016.9031006235,20
