@@ -395,10 +395,10 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        //        'particle_size' => array(10),
+        //'particle_size' => array(10),
         'chaotic' => array('cosine'),
         'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
-        // 'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+        //'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
