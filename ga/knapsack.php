@@ -99,11 +99,19 @@ class Knapsack extends DataPreparation
         }
 
         if (empty($negative)){
-            echo 'empty negative '.count($positive);
+            $min = min($positive);
+            $index = array_search($min, array_column($deviations, 'deviation'));
+            return $deviations[$index];
         }
         if (empty($positive)){
-            echo 'empty positive '.count($negative);
+            $max = max($negative);
+            echo $max.'<br>';
+            $index = array_search($max, array_column($deviations, 'deviation'));
+            return $deviations[$index];
         }
+        $min = min($positive);
+        $index = array_search($min, array_column($deviations, 'deviation'));
+        return $deviations[$index];
     }
 
     function fitnessEvaluation($parameters, $objectives)
@@ -122,10 +130,7 @@ class Knapsack extends DataPreparation
                 'deviation' => $deviation
             ];
         }
-        $this->calculateFitness($ret);
-        $max = max(array_column($ret, 'deviation'));
-        $index = array_search($max, array_column($ret, 'deviation'));
-        return $ret[$index];
+        return $this->calculateFitness($ret);
     }
 
     function optimization($parameters)
