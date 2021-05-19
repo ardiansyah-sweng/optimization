@@ -124,9 +124,9 @@ class MPUCWPSO
             $chaos = $chaoticFactory->initializeChaotic($chaotic_type, $iterasi);
             $B = $this->randomzeroToOne();
             if ($iterasi == 0) {
-                $R1[$iterasi + 1] = $chaos->chaotic(0.7);
-                $R2[$iterasi + 1] = $chaos->chaotic(0.7);
-                $r[$iterasi + 1] = $chaos->chaotic(0.7);
+                $R1[$iterasi + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $R2[$iterasi + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $r[$iterasi + 1] = $chaos->chaotic($this->randomzeroToOne());
                 $velocity[$iterasi + 1] = $this->randomzeroToOne();
 
                 ##Generate Population
@@ -187,7 +187,6 @@ class MPUCWPSO
                     }
                 }
                 $SPbest[$iterasi + 1] = $Pbest[$iterasi + 1];
-
             } // End of iterasi==0
 
             if ($iterasi > 0) {
@@ -245,7 +244,7 @@ class MPUCWPSO
                         $Pbest[$iterasi + 1][$key] = $Pbest[$iterasi][$key];
                     }
                 }
-                $min_ae = min(array_column($Pbest[$iterasi + 1],'ae'));
+                $min_ae = min(array_column($Pbest[$iterasi + 1], 'ae'));
                 $index = array_search($min_ae, $Pbest[$iterasi + 1]);
 
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
@@ -497,8 +496,9 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'chaotic' => array('sinu'),
+        //'chaotic' => array('sinu'),
         'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
@@ -519,7 +519,7 @@ foreach ($combinations as $key => $combination) {
     print_r($combination);
     echo '<br>';
 
-    $data = array($mae, $combination['particle_size']);
+    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
     $fp = fopen('../results/ardi2021.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

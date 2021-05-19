@@ -306,9 +306,9 @@ class Raoptimizer
 
             ## Generate population
             if ($generation === 0) {
-                $r1[$generation + 1] = $chaos->chaotic(0.7);
-                $r2[$generation + 1] = $chaos->chaotic(0.7);
-                $r[$generation + 1] = $chaos->chaotic(0.7);
+                $r1[$generation + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $r2[$generation + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $r[$generation + 1] = $chaos->chaotic($this->randomzeroToOne());
                 $vel[$generation + 1] = $this->randomzeroToOne();
 
                 for ($i = 0; $i <= $this->parameters['particle_size'] - 1; $i++) {
@@ -571,8 +571,9 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'chaotic' => array('sinu'),
+        //'chaotic' => array('sinu'),
         'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
@@ -617,7 +618,7 @@ foreach ($combinations as $key => $combination) {
     echo '&nbsp; &nbsp; ';
     print_r($combination);
     echo '<br>';
-    $data = array($mae, $combination['particle_size']);
+    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
     $fp = fopen('../results/ardi2021.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

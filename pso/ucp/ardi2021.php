@@ -1,6 +1,6 @@
 <?php
 set_time_limit(10000);
-include '../chaotic_interface.php';
+include 'chaotic_interface.php';
 
 class MPUCWPSO
 {
@@ -568,10 +568,10 @@ function get_combinations($arrays)
 $combinations = get_combinations(
     array(
 //        'particle_size' => array(10),
-        'chaotic' => array('sinu'),
+        //'chaotic' => array('sinu'),
 
         'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
-        // 'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
@@ -595,7 +595,7 @@ foreach ($combinations as $key => $combination) {
     echo '<br>';
     
     $data = array($mae, $combination['particle_size'], $combination['chaotic']);
-    $fp = fopen('results/ardi2021.txt', 'a');
+    $fp = fopen('../results/ardi2021.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }

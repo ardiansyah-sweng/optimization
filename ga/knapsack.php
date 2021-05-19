@@ -88,30 +88,80 @@ class Knapsack extends DataPreparation
         return $ret;
     }
 
-    function calculateFitness($deviations){
-        foreach ($deviations as $deviation){
-            if ($deviation['deviation'] < 0){
-                $negative[] = $deviation['deviation'];
+    function selection($sorted_particles)
+    {
+        print_r($sorted_particles);
+        echo '<p>';
+        $parents = 2;
+        foreach ($sorted_particles as $key => $val) {
+            if ($key <= $parents - 1) {
+                $ret[] = $val;
             }
-            if ($deviation['deviation'] >= 0){
-                $positive[] = $deviation['deviation'];
+        }
+        return $ret;
+    }
+
+    function isOne($positive)
+    {
+        if (count($positive) === 1) {
+            return true;
+        }
+    }
+
+    function calculateFitness($deviations)
+    {
+        foreach ($deviations as $key => $deviation) {
+            if ($deviation['deviation'] < 0) {
+                $negative[] = [
+                    'index' => $key,
+                    'deviation' => $deviation['deviation']
+                ];
+            }
+            if ($deviation['deviation'] >= 0) {
+                $positive[] = [
+                    'index' => $key,
+                    'deviation' => $deviation['deviation']
+                ];
             }
         }
 
-        if (empty($negative)){
-            $min = min($positive);
-            $index = array_search($min, array_column($deviations, 'deviation'));
-            return $deviations[$index];
+        if (empty($negative)) {
+            echo ' All positive <br>';
+            print_r($positive);
+            array_multisort(array_column($positive, 'deviation'), SORT_ASC, $positive);
+            echo '<p>';
+            $parents = $this->selection($positive);
+            print_r($parents);
+            return $parents;
         }
-        if (empty($positive)){
-            $max = max($negative);
-            echo $max.'<br>';
-            $index = array_search($max, array_column($deviations, 'deviation'));
-            return $deviations[$index];
+        if (empty($positive)) {
+            echo ' All negative <br>';
+            print_r($negative);
+            array_multisort(array_column($negative, 'deviation'), SORT_DESC, $negative);
+            echo '<p>';
+            $parents = $this->selection($negative);
+            print_r($parents);
+            return $parents;
         }
-        $min = min($positive);
-        $index = array_search($min, array_column($deviations, 'deviation'));
-        return $deviations[$index];
+        if ($this->isOne($positive)) {
+            array_multisort(array_column($positive, 'deviation'), SORT_ASC, $positive);
+            array_multisort(array_column($negative, 'deviation'), SORT_DESC, $negative);
+            echo 'take negative';
+            echo '<br>';
+            print_r($positive[0]);
+            echo '<br>';
+            print_r($negative[0]);
+            return [
+                $positive[0], $negative[0]
+            ];
+        }
+        if (!$this->isOne($positive)) {
+            array_multisort(array_column($positive, 'deviation'), SORT_ASC, $positive);
+            echo ' Positive > 1 <br>';
+            $parents = $this->selection($positive);
+            print_r($parents);
+            return $parents;
+        }
     }
 
     function fitnessEvaluation($parameters, $objectives)
@@ -142,21 +192,38 @@ class Knapsack extends DataPreparation
             if ($generation === 0) {
                 $objectives = $this->objective($parameters, $solutions);
                 $optimized = $this->fitnessEvaluation($parameters, $objectives);
-                print_r($solutions[$optimized['index']]);
+                echo '<p>';
+                print_r($solutions[$optimized[0]['index']]);
                 echo '<br>';
+                print_r($solutions[$optimized[1]['index']]);
+                echo '<p>';
                 print_r($optimized);
                 echo '<br>';
-                $selected = $this->pairingSolutionsAndItems($parameters, $solutions[$optimized['index']]);
-                print_r($selected);
+                $selected1 = $this->pairingSolutionsAndItems($parameters, $solutions[$optimized[0]['index']]);
+                $selected2 = $this->pairingSolutionsAndItems($parameters, $solutions[$optimized[1]['index']]);
+                echo '<p>';
+                echo 'Your parcel 1:<br>';
+                foreach ($selected1 as $item) {
+                    echo $item['item'] . ' ' . $item['price'] . '<br>';
+                }
+                echo '<p>';
+                echo 'Your parcel 2:<br>';
+                foreach ($selected2 as $item) {
+                    echo $item['item'] . ' ' . $item['price'] . '<br>';
+                }
+                echo '<p>';
+                print_r($selected1);
+                echo "<br>";
+                print_r($selected2);
                 echo '<br>';
-                echo $parameters['knapsack'] . ' ' . ($parameters['knapsack'] - $optimized['deviation']) . ' ' . $optimized['deviation'] . ' ' . count($selected) . ' item';
+                echo $parameters['knapsack'] . ' ' . ($parameters['knapsack'] - $optimized[0]['deviation']) . ' ' . $optimized[0]['deviation'] . ' ' . count($selected1) . ' '.count($selected2).' item';
             }
 
             ## Fitness evaluation
-            if ($optimized['deviation'] < $parameters['fitness']) {
+            if ($optimized[0]['deviation'] < $parameters['fitness']) {
                 return $optimized;
             } else {
-                $ret[] = $optimized;
+                $ret[] = $optimized[0];
             }
         }
 
@@ -171,7 +238,7 @@ $parameters = [
     'population_size' => 10,
     'fitness' => 1000,
     'max_generation' => 40,
-    'knapsack' => 75000
+    'knapsack' => 105000
 ];
 
 $solution = new Knapsack;
