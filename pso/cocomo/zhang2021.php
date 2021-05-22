@@ -160,7 +160,7 @@ class MPUCWPSO
                     ];
                 }
                 $Pbest[$iterasi + 1] = $particles[$iterasi + 1];
-                foreach ($Pbest[$iterasi+1] as $pbest){
+                foreach ($Pbest[$iterasi + 1] as $pbest) {
                     $pbests[] = $pbest['ae'];
                 }
                 $index = array_search(min($pbests), array_column($Pbest[$iterasi + 1], 'ae'));

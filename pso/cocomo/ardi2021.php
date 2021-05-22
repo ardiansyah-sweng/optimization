@@ -1,5 +1,5 @@
 <?php
-set_time_limit(10000);
+set_time_limit(1000000);
 include 'chaotic_interface.php';
 include 'raw_data_interface.php';
 include 'data_preprocessing.php';
@@ -124,9 +124,9 @@ class MPUCWPSO
             $chaos = $chaoticFactory->initializeChaotic($chaotic_type, $iterasi);
             $B = $this->randomzeroToOne();
             if ($iterasi == 0) {
-                $R1[$iterasi + 1] = $chaos->chaotic($this->randomzeroToOne());
-                $R2[$iterasi + 1] = $chaos->chaotic($this->randomzeroToOne());
-                $r[$iterasi + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $R1[$iterasi + 1] = $chaos->chaotic(0.7);
+                $R2[$iterasi + 1] = $chaos->chaotic(0.7);
+                $r[$iterasi + 1] = $chaos->chaotic(0.7);
                 $velocity[$iterasi + 1] = $this->randomzeroToOne();
 
                 ##Generate Population
@@ -496,15 +496,15 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        //'chaotic' => array('sinu'),
-        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
-        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+        'chaotic' => array('sinu'),
+        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+        //'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
 foreach ($combinations as $key => $combination) {
     $MAX_ITER = 40;
-    $MAX_TRIAL = 30;
+    $MAX_TRIAL = 1000;
     $swarm_size = $combination['particle_size'];
     $max_counter = 100000;
 

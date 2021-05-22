@@ -1,5 +1,5 @@
 <?php
-set_time_limit(10000);
+set_time_limit(1000000);
 include 'chaotic_interface.php';
 
 class MPUCWPSO
@@ -577,7 +577,7 @@ $combinations = get_combinations(
 
 foreach ($combinations as $key => $combination) {
     $MAX_ITER = 40;
-    $MAX_TRIAL = 30;
+    $MAX_TRIAL = 1000;
     $numDataset = count($dataset);
     $swarm_size = $combination['particle_size'];
     $max_counter = 100000;

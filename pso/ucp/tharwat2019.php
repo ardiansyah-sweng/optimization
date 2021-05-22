@@ -1,6 +1,6 @@
 <?php
-set_time_limit(10000);
-include '../chaotic_interface.php';
+set_time_limit(1000000);
+include 'chaotic_interface.php';
 
 class PSO
 {
@@ -18,8 +18,8 @@ class PSO
 
     private $INERTIA_MAX = 0.9;
     private $INERTIA_MIN = 0.4;
-    private $C1 = 2;
-    private $C2 = 2;
+    private $C1 = 1.5;
+    private $C2 = 1.5;
 
     /**
      * Membangkitkan nilai acak dari 0..1
@@ -429,8 +429,8 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    $MAX_ITER = 40;
-    $MAX_TRIAL = 30;
+    $MAX_ITER = 60;
+    $MAX_TRIAL = 1000;
     $numDataset = count($dataset);
     $swarm_size = $combination['particle_size'];
     $max_counter = 100000;
