@@ -503,24 +503,26 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    $MAX_ITER = 40;
-    $MAX_TRIAL = 1000;
-    $swarm_size = $combination['particle_size'];
-    $max_counter = 100000;
+    for ($i = 0; $i <= 30 - 1; $i++) {
+        $MAX_ITER = 40;
+        $MAX_TRIAL = 1000;
+        $swarm_size = $combination['particle_size'];
+        $max_counter = 100000;
 
-    $start = microtime(true);
+        $start = microtime(true);
 
-    $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
-    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
+        $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
+        $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
 
-    $mae = array_sum(array_column($optimized, 'ae')) / 93;
-    echo 'MAE: ' . $mae;
-    echo '&nbsp; &nbsp; ';
-    print_r($combination);
-    echo '<br>';
+        $mae = array_sum(array_column($optimized, 'ae')) / 93;
+        echo 'MAE: ' . $mae;
+        echo '&nbsp; &nbsp; ';
+        print_r($combination);
+        echo '<br>';
 
-    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
-    $fp = fopen('../results/ardi2021.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
+        $data = array($mae, $combination['particle_size']);
+        $fp = fopen('../results/ardi2021.txt', 'a');
+        fputcsv($fp, $data);
+        fclose($fp);
+    }
 }
