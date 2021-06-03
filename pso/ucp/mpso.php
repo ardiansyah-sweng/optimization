@@ -1,5 +1,37 @@
 <?php
 set_time_limit(1000000);
+include 'seeds.txt';
+
+class Read
+{
+    public $index;
+    public $column;
+    public $filename;
+
+    function __construct($dataset)
+    {
+        $this->filename = $dataset['filename'];
+        $this->index = $dataset['index'];
+        $this->column = $dataset['name'];
+    }
+
+    public function datasetFile()
+    {
+        $raw_dataset = file($this->filename);
+        foreach ($raw_dataset as $val) {
+            $data[] = explode(",", $val);
+        }
+        foreach ($data as $key => $val) {
+            foreach (array_keys($val) as $subkey) {
+                if ($subkey == $this->index[$subkey]) {
+                    $data[$key][$this->column[$subkey]] = $data[$key][$subkey];
+                    unset($data[$key][$subkey]);
+                }
+            }
+        }
+        return $data;
+    }
+}
 
 class ParticleSwarmOptimizer
 {
@@ -103,7 +135,6 @@ class ParticleSwarmOptimizer
     {
         return $inertia * $velocity + ($this->C1 * $R1) * ($Pbest - $position) + ($this->C2 * $R2) * ($Gbest - $position);
     }
-
 
     function comparePbests($Pbests, $particles)
     {
@@ -231,7 +262,7 @@ class ParticleSwarmOptimizer
         return $Gbests['ae'] + ($pbest1['ae'] - $pbest2['ae']);
     }
 
-    function findSolution($project)
+    function findSolution($project, $initial_populations)
     {
         $arrLimit = array(
             'xSimple' => array('xSimpleMin' => 5, 'xSimpleMax' => 7.49),
@@ -249,12 +280,9 @@ class ParticleSwarmOptimizer
                 $chaos_value[$iteration + 1] = $chaos_initial;
                 $inertia[$iteration + 1] = $chaos_initial * $this->min_inertia + (($this->max_inertia - $this->min_inertia) * $iteration / $this->max_iteration);
 
-                for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
-                    $xSimple = $this->randomSimpleUCWeight();
-                    $xAverage = $this->randomAverageUCWeight();
-                    $xComplex = $this->randomComplexUCWeight();
+                foreach ($initial_populations as $i => $initial_population) {
+                    $UCP = $this->size(floatval($initial_population['simple']), $project['simpleUC'], floatval($initial_population['average']), $project['averageUC'], floatval($initial_population['complex']), $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
 
-                    $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
                     $esimated_effort = $UCP * $this->productivity_factor;
                     $particles[$iteration + 1][$i]['estimatedEffort'] = $esimated_effort;
                     $particles[$iteration + 1][$i]['ucp'] = $UCP;
@@ -262,9 +290,9 @@ class ParticleSwarmOptimizer
                     $particles[$iteration + 1][$i]['vSimple'] = $this->randomZeroToOne();
                     $particles[$iteration + 1][$i]['vAverage'] = $this->randomZeroToOne();
                     $particles[$iteration + 1][$i]['vComplex'] = $this->randomZeroToOne();
-                    $particles[$iteration + 1][$i]['xSimple'] = $xSimple;
-                    $particles[$iteration + 1][$i]['xAverage'] = $xAverage;
-                    $particles[$iteration + 1][$i]['xComplex'] = $xComplex;
+                    $particles[$iteration + 1][$i]['xSimple'] = floatval($initial_population['simple']);
+                    $particles[$iteration + 1][$i]['xAverage'] = floatval($initial_population['average']);
+                    $particles[$iteration + 1][$i]['xComplex'] = floatval($initial_population['complex']);
                 }
                 $Pbests[$iteration + 1] = $particles[$iteration + 1];
                 $SPbests[$iteration + 1] = $this->SPbest($particles[$iteration + 1]);
@@ -378,26 +406,61 @@ class ParticleSwarmOptimizer
 
     function finishing()
     {
-        foreach ($this->dataset as $key => $project) {
-            if ($key >= 0) {
-                for ($i = 0; $i <= $this->trials - 1; $i++) {
-                    $results[] = $this->findSolution($project);
+        $datasets = [
+            'filename' => 'seeds.txt',
+            'index' => [0, 1, 2],
+            'name' => ['simple', 'average', 'complex']
+        ];
+
+        $initial_populations = new Read($datasets);
+        $seeds = $initial_populations->datasetFile();
+        $end = [];
+
+        for ($i = 0; $i <= $this->trials - 1; $i++) {
+            foreach ($this->dataset as $key => $project) {
+                if ($key >= 0) {
+                    if ($i === 0) {
+                        $start = 0;
+                    } else {
+                        $start = $end[$i - 1] + 1;
+                    }
+                    $end[$i] = $start + ($this->swarm_size - 1);
+                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $results[] = $this->findSolution($project, $initial_populations);
                 }
-                $xSimple = array_sum(array_column($results, 'xSimple')) / $this->trials;
-                $xAverage = array_sum(array_column($results, 'xAverage')) / $this->trials;
-                $xComplex = array_sum(array_column($results, 'xComplex')) / $this->trials;
-                $results = [];
+            }
+            $mae = Arithmatic::mae($results);
+            $data = array($mae);
+            $fp = fopen('../results/liu.txt', 'a');
+            fputcsv($fp, $data);
+            fclose($fp);
+            $ret[] = $mae;
+        }
+        return $ret;
+    }
+}
 
-                $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
+class Arithmatic
+{
+    public static function mae($data)
+    {
+        return array_sum(array_column($data, 'ae')) / count($data);
+    }
+}
 
-                $estimated_effort = $UCP * $this->productivity_factor;
-                $ae = abs($estimated_effort - floatval($project['actualEffort']));
-                $ret[] = array('actualEffort' => $project['actualEffort'], 'estimatedEffort' => $estimated_effort, 'ucp' => $UCP, 'ae' => $ae, 'xSimple' => $xSimple, 'xAverage' => $xAverage, 'xComplex' => $xComplex);
+class Dataset
+{
+    public static function provide($seeds, $start, $end)
+    {
+        foreach ($seeds as $key => $dataset) {
+            if ($key >= $start && $key <= $end) {
+                $ret[] = $dataset;
             }
         }
         return $ret;
     }
 }
+
 
 /**
  * Dataset 71 data point
@@ -499,31 +562,18 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($MAX_ITERATION = 1; $MAX_ITERATION <= 250; $MAX_ITERATION++) {
-        $swarm_size = $combination['particle_size'];
-        $C1 = 2;
-        $C2 = 2;
+    $swarm_size = $combination['particle_size'];
+    $C1 = 2;
+    $C2 = 2;
+    $MAX_ITERATION = 40;
+    $max_inertia = 0.9;
+    $min_inertia = 0.4;
+    $stopping_value = 200;
+    $trials = 30;
+    $productivity_factor = 20;
+    $MAX_COUNTER = 100;
 
-        $max_inertia = 0.9;
-        $min_inertia = 0.4;
-        $stopping_value = 200;
-        $trials = 30;
-        $productivity_factor = 20;
-        $MAX_COUNTER = 100;
-
-        $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials);
-        $optimized = $optimize->finishing();
-
-        $mae = array_sum(array_column($optimized, 'ae')) / 71;
-        echo 'MAE: ' . $mae;
-        echo '&nbsp; &nbsp; ';
-        print_r($combination);
-        echo '<br>';
-
-        $data = array($mae, $MAX_ITERATION);
-        $fp = fopen('../results/liu.txt', 'a');
-        fputcsv($fp, $data);
-        fclose($fp);
-        $absolute_errors = [];
-    }
+    $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials);
+    $optimized = $optimize->finishing();
+    print_r($optimized);
 }

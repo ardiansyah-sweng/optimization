@@ -3,6 +3,7 @@ set_time_limit(1000000);
 include 'raw_data_interface.php';
 include 'data_preprocessing.php';
 include 'chaotic_interface.php';
+include 'seeds_class.php';
 
 class ParticleSwarmOptimizer
 {
@@ -63,7 +64,7 @@ class ParticleSwarmOptimizer
 
     function estimating($A, $size, $E, $effort_multipliers)
     {
-        return $A * pow($size, $E) * array_product($effort_multipliers);
+        return floatval($A) * pow($size, $E) * array_product($effort_multipliers);
     }
 
     function randomZeroToOne()
@@ -103,7 +104,7 @@ class ParticleSwarmOptimizer
         return $Pbests;
     }
 
-    function findSolution($project)
+    function findSolution($project, $initial_populations)
     {
         $SF['prec'] = $project['prec'];
         $SF['flex'] = $project['flex'];
@@ -128,6 +129,7 @@ class ParticleSwarmOptimizer
         $EM['site'] = $project['site'];
         $EM['sced'] = $project['sced'];
 
+        $Gbests = [];
         for ($iteration = 0; $iteration <= $this->max_iteration - 1; $iteration++) {
             $inertia[$iteration + 1]  = $this->min_inertia - ((($this->max_inertia - $this->min_inertia) * $iteration) / $this->max_iteration);
             $chaoticFactory = new ChaoticFactory();
@@ -139,16 +141,11 @@ class ParticleSwarmOptimizer
                 $R1[$iteration + 1] = $chaos1->chaotic($this->randomzeroToOne());
                 $R2[$iteration + 1] = $chaos2->chaotic($this->randomzeroToOne());
 
-                for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
-                    $A = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
-
+                foreach ($initial_populations as $i => $initial_population) {
                     $B = $this->randomzeroToOne();
-
                     $E = $this->scaleEffortExponent($B, $SF); ## chaotic
-
-                    $estimated_effort = $this->estimating($A, $project['kloc'], $E, $EM);
-
-                    $particles[$iteration + 1][$i]['A'] = $A;
+                    $estimated_effort = $this->estimating($initial_population['A'], $project['kloc'], $E, $EM);
+                    $particles[$iteration + 1][$i]['A'] = $initial_population['A'];
                     $particles[$iteration + 1][$i]['B'] = $B;
                     $particles[$iteration + 1][$i]['E'] = $E;
                     $particles[$iteration + 1][$i]['EM'] = array_sum($EM);
@@ -160,6 +157,7 @@ class ParticleSwarmOptimizer
                 }
                 $Pbests[$iteration + 1] = $particles[$iteration + 1];
                 $Gbest[$iteration + 1] = $this->minimalAE($Pbests[$iteration + 1]);
+
             } ## End Generate Population
 
             if ($iteration > 0) {
@@ -197,13 +195,11 @@ class ParticleSwarmOptimizer
                 }
                 $Pbests[$iteration + 1] = $this->comparePbests($Pbests[$iteration], $particles[$iteration + 1]);
                 $Gbest[$iteration + 1] = $this->minimalAE($Pbests[$iteration + 1]);
-
                 if ($Gbest[$iteration + 1] < $this->stopping_value) {
                     return $Gbest[$iteration + 1];
                 }
                 $Gbests[] = $Gbest[$iteration + 1];
             } ## End IF iteration > 0
-
         } ## End of iteration
 
         $minimal_AE = min(array_column($Gbests, 'ae'));
@@ -213,71 +209,82 @@ class ParticleSwarmOptimizer
 
     function finishing()
     {
-        foreach ($this->prepareDataset() as $key => $project) {
-            if ($key >= 0) {
-                $projects['prec'] = $this->scales['prec'][$project['prec']];
-                $projects['flex'] = $this->scales['flex'][$project['flex']];
-                $projects['resl'] = $this->scales['resl'][$project['resl']];
-                $projects['team'] = $this->scales['team'][$project['team']];
-                $projects['pmat'] = $this->scales['pmat'][$project['pmat']];
-                $projects['rely'] = $this->scales['rely'][$project['rely']];
-                $projects['data'] = $this->scales['data'][$project['data']];
-                $projects['cplx'] = $this->scales['cplx'][$project['cplx']];
-                $projects['ruse'] = $this->scales['ruse'][$project['ruse']];
-                $projects['docu'] = $this->scales['docu'][$project['docu']];
-                $projects['time'] = $this->scales['time'][$project['time']];
-                $projects['stor'] = $this->scales['stor'][$project['stor']];
-                $projects['pvol'] = $this->scales['pvol'][$project['pvol']];
-                $projects['acap'] = $this->scales['acap'][$project['acap']];
-                $projects['pcap'] = $this->scales['pcap'][$project['pcap']];
-                $projects['pcon'] = $this->scales['pcon'][$project['pcon']];
-                $projects['apex'] = $this->scales['apex'][$project['apex']];
-                $projects['plex'] = $this->scales['plex'][$project['plex']];
-                $projects['ltex'] = $this->scales['ltex'][$project['ltex']];
-                $projects['tool'] = $this->scales['tool'][$project['tool']];
-                $projects['site'] = $this->scales['site'][$project['site']];
-                $projects['sced'] = $this->scales['sced'][$project['sced']];
-                $projects['kloc'] = $project['kloc'];
-                $projects['effort'] = $project['effort'];
-                $projects['defects'] = $project['defects'];
-                $projects['months'] = $project['months'];
+        $datasets = [
+            'filename' => 'seeds.txt',
+            'index' => 0,
+            'name' => 'A'
+        ];
+        $initial_populations = new Read($datasets);
+        $seeds = $initial_populations->datasetFile();
+        $end = [];
 
-                $SF['prec'] = $projects['prec'];
-                $SF['flex'] = $projects['flex'];
-                $SF['resl'] = $projects['resl'];
-                $SF['team'] = $projects['team'];
-                $SF['pmat'] = $projects['pmat'];
-                $EM['rely'] = $projects['rely'];
-                $EM['data'] = $projects['data'];
-                $EM['cplx'] = $projects['cplx'];
-                $EM['ruse'] = $projects['ruse'];
-                $EM['docu'] = $projects['docu'];
-                $EM['time'] = $projects['time'];
-                $EM['stor'] = $projects['stor'];
-                $EM['pvol'] = $projects['pvol'];
-                $EM['acap'] = $projects['acap'];
-                $EM['pcap'] = $projects['pcap'];
-                $EM['pcon'] = $projects['pcon'];
-                $EM['apex'] = $projects['apex'];
-                $EM['plex'] = $projects['plex'];
-                $EM['ltex'] = $projects['ltex'];
-                $EM['tool'] = $projects['tool'];
-                $EM['site'] = $projects['site'];
-                $EM['sced'] = $projects['sced'];
+        for ($i = 0; $i <= $this->trials - 1; $i++) {
+            foreach ($this->prepareDataset() as $key => $project) {
+                if ($key >= 0) {
+                    $projects['prec'] = $this->scales['prec'][$project['prec']];
+                    $projects['flex'] = $this->scales['flex'][$project['flex']];
+                    $projects['resl'] = $this->scales['resl'][$project['resl']];
+                    $projects['team'] = $this->scales['team'][$project['team']];
+                    $projects['pmat'] = $this->scales['pmat'][$project['pmat']];
+                    $projects['rely'] = $this->scales['rely'][$project['rely']];
+                    $projects['data'] = $this->scales['data'][$project['data']];
+                    $projects['cplx'] = $this->scales['cplx'][$project['cplx']];
+                    $projects['ruse'] = $this->scales['ruse'][$project['ruse']];
+                    $projects['docu'] = $this->scales['docu'][$project['docu']];
+                    $projects['time'] = $this->scales['time'][$project['time']];
+                    $projects['stor'] = $this->scales['stor'][$project['stor']];
+                    $projects['pvol'] = $this->scales['pvol'][$project['pvol']];
+                    $projects['acap'] = $this->scales['acap'][$project['acap']];
+                    $projects['pcap'] = $this->scales['pcap'][$project['pcap']];
+                    $projects['pcon'] = $this->scales['pcon'][$project['pcon']];
+                    $projects['apex'] = $this->scales['apex'][$project['apex']];
+                    $projects['plex'] = $this->scales['plex'][$project['plex']];
+                    $projects['ltex'] = $this->scales['ltex'][$project['ltex']];
+                    $projects['tool'] = $this->scales['tool'][$project['tool']];
+                    $projects['site'] = $this->scales['site'][$project['site']];
+                    $projects['sced'] = $this->scales['sced'][$project['sced']];
+                    $projects['kloc'] = $project['kloc'];
+                    $projects['effort'] = $project['effort'];
+                    $projects['defects'] = $project['defects'];
+                    $projects['months'] = $project['months'];
 
-                for ($i = 0; $i <= $this->trials - 1; $i++) {
-                    $results[] = $this->findSolution($projects);
+                    $SF['prec'] = $projects['prec'];
+                    $SF['flex'] = $projects['flex'];
+                    $SF['resl'] = $projects['resl'];
+                    $SF['team'] = $projects['team'];
+                    $SF['pmat'] = $projects['pmat'];
+                    $EM['rely'] = $projects['rely'];
+                    $EM['data'] = $projects['data'];
+                    $EM['cplx'] = $projects['cplx'];
+                    $EM['ruse'] = $projects['ruse'];
+                    $EM['docu'] = $projects['docu'];
+                    $EM['time'] = $projects['time'];
+                    $EM['stor'] = $projects['stor'];
+                    $EM['pvol'] = $projects['pvol'];
+                    $EM['acap'] = $projects['acap'];
+                    $EM['pcap'] = $projects['pcap'];
+                    $EM['pcon'] = $projects['pcon'];
+                    $EM['apex'] = $projects['apex'];
+                    $EM['plex'] = $projects['plex'];
+                    $EM['ltex'] = $projects['ltex'];
+                    $EM['tool'] = $projects['tool'];
+                    $EM['site'] = $projects['site'];
+                    $EM['sced'] = $projects['sced'];
+
+                    if ($i === 0) {
+                        $start = 0;
+                    } else {
+                        $start = $end[$i - 1] + 1;
+                    }
+                    $end[$i] = $start + ($this->swarm_size - 1);
+                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $results[] = $this->findSolution($projects, $initial_populations);
+
                 }
-                $A = array_sum(array_column($results, 'A')) / $this->trials;
-                $B = array_sum(array_column($results, 'B')) / $this->trials;
-                $results = [];
-                $E = $this->scaleEffortExponent($B, $SF);
-                $effort = $project['effort'];
-                $estimatedEffort = $this->estimating($A, $project['kloc'], $E, $EM);
-                $ae = abs($estimatedEffort - $effort);
-                $ret[] = array('A' => $A, 'B' => $B, 'E' => $E, 'effort' => $effort, 'estimatedEffort' => $estimatedEffort, 'ae' => $ae);
+                print_r($results);
             }
         }
+
         return $ret;
     }
 }
@@ -327,12 +334,11 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($MAX_ITERATION = 1; $MAX_ITERATION <= 40; $MAX_ITERATION++) {
         $dataset = 'cocomo_nasa93.txt';
         $swarm_size = $combination['particle_size'];
-        $C1 = 2;
-        $C2 = 2;
-        //$MAX_ITERATION = 40;
+        $C1 = 1.5;
+        $C2 = 1.5;
+        $MAX_ITERATION = 40;
         $max_inertia = 0.9;
         $min_inertia = 0.4;
         $stopping_value = 10;
@@ -354,5 +360,4 @@ foreach ($combinations as $key => $combination) {
         fputcsv($fp, $data);
         fclose($fp);
         $absolute_errors = [];
-    }
 }

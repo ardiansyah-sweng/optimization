@@ -424,30 +424,32 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'particle_size' => array(100),
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    $MAX_ITER = 60;
-    $MAX_TRIAL = 1000;
-    $numDataset = count($dataset);
-    $swarm_size = $combination['particle_size'];
-    $max_counter = 100000;
+    for ($i = 0; $i <= 30 - 1; $i++) {
+        $MAX_ITER = 60;
+        $MAX_TRIAL = 1000;
+        $numDataset = count($dataset);
+        $swarm_size = $combination['particle_size'];
+        $max_counter = 100000;
 
-    $start = microtime(true);
+        $start = microtime(true);
 
-    $mpucwPSO = new PSO();
-    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, 'singer', 'sine', $MAX_TRIAL);
+        $mpucwPSO = new PSO();
+        $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, 'singer', 'sine', $MAX_TRIAL);
 
-    $mae = array_sum(array_column($optimized, 'ae')) / 71;
-    echo 'MAE: ' . $mae;
-    echo '&nbsp; &nbsp; ';
-    print_r($combination);
-    echo '<br>';
-    
-    $data = array($mae, $combination['particle_size']);
-    $fp = fopen('results/tharwat.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
+        $mae = array_sum(array_column($optimized, 'ae')) / 71;
+        echo 'MAE: ' . $mae;
+        echo '&nbsp; &nbsp; ';
+        print_r($combination);
+        echo '<br>';
+
+        $data = array($mae, $combination['particle_size']);
+        $fp = fopen('../results/tharwat.txt', 'a');
+        fputcsv($fp, $data);
+        fclose($fp);
+    }
 }

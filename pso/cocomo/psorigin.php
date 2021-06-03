@@ -177,7 +177,7 @@ class MPUCWPSO
                         $Pbest[$iterasi + 1][$key] = $Pbest[$iterasi][$key];
                     }
                 }
-                $min_ae = min(array_column($Pbest[$iterasi + 1],'ae'));
+                $min_ae = min(array_column($Pbest[$iterasi + 1], 'ae'));
                 $index = array_search($min_ae, $Pbest[$iterasi + 1]);
 
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
@@ -312,29 +312,31 @@ function get_combinations($arrays)
 $combinations = get_combinations(
     array(
         'chaotic' => array('sinu'),
-        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'particle_size' => array(60),
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    $MAX_ITER = 40;
-    $MAX_TRIAL = 30;
-    $swarm_size = $combination['particle_size'];
-    $max_counter = 100000;
+    for ($MAX_ITER = 1; $MAX_ITER <= 40; $MAX_ITER++) {
+        //$MAX_ITER = 40;
+        $MAX_TRIAL = 30;
+        $swarm_size = $combination['particle_size'];
+        $max_counter = 100000;
 
-    $start = microtime(true);
+        $start = microtime(true);
 
-    $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
-    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
+        $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
+        $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
 
-    $mae = array_sum(array_column($optimized, 'ae')) / 93;
-    echo 'MAE: ' . $mae;
-    echo '&nbsp; &nbsp; ';
-    print_r($combination);
-    echo '<br>';
+        $mae = array_sum(array_column($optimized, 'ae')) / 93;
+        echo 'MAE: ' . $mae;
+        echo '&nbsp; &nbsp; ';
+        print_r($combination);
+        echo '<br>';
 
-    $data = array($mae, $combination['particle_size']);
-    $fp = fopen('../results/psorigin.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
+        $data = array($mae, $MAX_ITER);
+        $fp = fopen('../results/psorigin.txt', 'a');
+        fputcsv($fp, $data);
+        fclose($fp);
+    }
 }

@@ -516,35 +516,37 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+        'particle_size' => array(10)
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    $dataset = 'cocomo_nasa93.txt';
-    $swarm_size = $combination['particle_size'];
-    $C1 = 2;
-    $C2 = 2;
-    $MAX_ITERATION = 40;
-    $max_inertia = 0.9;
-    $min_inertia = 0.4;
-    $stopping_value = 10;
-    $trials = 30;
-    $productivity_factor = 20;
-    $MAX_COUNTER = 100;
+    for ($MAX_ITERATION = 1; $MAX_ITERATION <= 40; $MAX_ITERATION++) {
+        $dataset = 'cocomo_nasa93.txt';
+        $swarm_size = $combination['particle_size'];
+        $C1 = 2;
+        $C2 = 2;
+        //$MAX_ITERATION = 40;
+        $max_inertia = 0.9;
+        $min_inertia = 0.4;
+        $stopping_value = 10;
+        $trials = 30;
+        $productivity_factor = 20;
+        $MAX_COUNTER = 100;
 
-    $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
-    $optimized = $optimize->finishing();
+        $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
+        $optimized = $optimize->finishing();
 
-    $mae = array_sum(array_column($optimized, 'ae')) / 93;
-    echo 'MAE: ' . $mae;
-    echo '&nbsp; &nbsp; ';
-    print_r($combination);
-    echo '<br>';
+        $mae = array_sum(array_column($optimized, 'ae')) / 93;
+        echo 'MAE: ' . $mae;
+        echo '&nbsp; &nbsp; ';
+        print_r($combination);
+        echo '<br>';
 
-    $data = array($mae, $combination['particle_size']);
-    $fp = fopen('../results/liu.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
-    $absolute_errors = [];
+        $data = array($mae, $MAX_ITERATION);
+        $fp = fopen('../results/liu.txt', 'a');
+        fputcsv($fp, $data);
+        fclose($fp);
+        $absolute_errors = [];
+    }
 }

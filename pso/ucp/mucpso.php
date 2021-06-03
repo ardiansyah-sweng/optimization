@@ -1,18 +1,12 @@
 <?php
 set_time_limit(1000000);
 include 'chaotic_interface.php';
+include 'seeds_class.php';
 
 class MPUCWPSO
 {
     private $PRODUCTIVITY_FACTOR = 20;
     private $FITNESS_VALUE_BASELINE = array(
-        'azzeh1' => 1219.8,
-        'azzeh2' => 201.1,
-        'azzeh3' => 1564.8,
-        'silhavy' => 240.19,
-        'karner' => 1820,
-        'nassif' => 1712,
-        'ardiansyah' => 404.85,
         'polynomial' => 238.11
     );
 
@@ -51,18 +45,16 @@ class MPUCWPSO
         return $arrPartikel[array_search(min($ae), $ae)];
     }
 
-    function uniformInitialization()
+    function uniformInitialization($seeds)
     {
         $D = 3;
         $n = $this->swarm_size;
         $X1 = $this->randomUCWeight();
-        for ($i = 1; $i <= $n - 1; $i++) {
-            $R[$i] = $this->randomUCWeight();
-        }
-        foreach ($R as $key => $r) {
-            $xSimple = $X1['xSimple'] + $r['xSimple'] / $n * ($this->range_positions['max_xSimple'] - $this->range_positions['min_xSimple']);
-            $xAverage = $X1['xAverage'] + $r['xAverage'] / $n * ($this->range_positions['max_xAverage'] - $this->range_positions['min_xAverage']);
-            $xComplex = $X1['xComplex'] + $r['xComplex'] / $n * ($this->range_positions['max_xComplex'] - $this->range_positions['min_xComplex']);
+
+        foreach ($seeds as $key => $r) {
+            $xSimple = $X1['xSimple'] + floatval($r['simple']) / $n * ($this->range_positions['max_xSimple'] - $this->range_positions['min_xSimple']);
+            $xAverage = $X1['xAverage'] + floatval($r['average']) / $n * ($this->range_positions['max_xAverage'] - $this->range_positions['min_xAverage']);
+            $xComplex = $X1['xComplex'] + floatval($r['complex']) / $n * ($this->range_positions['max_xComplex'] - $this->range_positions['min_xComplex']);
 
             if ($xSimple > $this->range_positions['max_xSimple']) {
                 $xSimple = $xSimple - ($this->range_positions['max_xSimple'] - $this->range_positions['min_xSimple']);
@@ -101,16 +93,11 @@ class MPUCWPSO
         return $UUCP * $projects['tcf'] * $projects['ecf'];
     }
 
-    function Main($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type)
+    function Main($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type, $initial_populations)
     {
         ##Generate Population
         for ($i = 0; $i <= $swarm_size - 1; $i++) {
-
-            $positions = $this->uniformInitialization()[$i];
-            //print_r($dataset);
-            //echo '<p>';
-            //print_r($positions);
-            //            dd($dataset);
+            $positions = $this->uniformInitialization($initial_populations)[$i];
             $UCP = $this->size($positions, $dataset);
             $partikelAwal[$i]['estimatedEffort'] = $UCP * $this->PRODUCTIVITY_FACTOR;
             $partikelAwal[$i]['ae'] = abs($partikelAwal[$i]['estimatedEffort'] - $dataset['actualEffort']);
@@ -437,36 +424,37 @@ class MPUCWPSO
         return $results[$index];
     } // End of main()
 
-    // function size($xSimple, $simpleUC, $xAverage, $averageUC, $xComplex, $complexUC, $uaw, $tcf, $ecf)
-    // {
-    //     $ucSimple = $xSimple * $simpleUC;
-    //     $ucAverage = $xAverage * $averageUC;
-    //     $ucComplex = $xComplex * $complexUC;
-
-    //     $UUCW = $ucSimple + $ucAverage + $ucComplex;
-    //     $UUCP = $uaw + $UUCW;
-    //     return $UUCP * $tcf * $ecf;
-    // }
-
     function finishing($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type, $max_trial)
     {
-        foreach ($dataset as $key => $project) {
-            if ($key >= 0) {
-                for ($i = 0; $i <= $max_trial - 1; $i++) {
-                    $results[] = $this->Main($project, $max_iter, $swarm_size, $max_counter, $chaotic_type);
+        $datasets = [
+            'filename' => 'seeds.txt',
+            'index' => [0, 1, 2],
+            'name' => ['simple', 'average', 'complex']
+        ];
+
+        $initial_populations = new Read($datasets);
+        $seeds = $initial_populations->datasetFile();
+        $end = [];
+
+        for ($i = 0; $i <= $max_trial - 1; $i++) {
+            foreach ($dataset as $key => $project) {
+                if ($key >= 0) {
+                    if ($i === 0) {
+                        $start = 0;
+                    } else {
+                        $start = $end[$i - 1] + 1;
+                    }
+                    $end[$i] = $start + ($this->swarm_size - 1);
+                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $results[] = $this->Main($project, $max_iter, $swarm_size, $max_counter, $chaotic_type, $initial_populations);
                 }
-                $xSimple = array_sum(array_column($results, 'xSimple')) / $max_trial;
-                $xAverage = array_sum(array_column($results, 'xAverage')) / $max_trial;
-                $xComplex = array_sum(array_column($results, 'xComplex')) / $max_trial;
-                $positions = ['xSimple' => $xSimple, 'xAverage' => $xAverage, 'xComplex' => $xComplex];
-                $results = [];
-
-                $UCP = $this->size($positions, $project);
-
-                $estimated_effort = $UCP * $this->PRODUCTIVITY_FACTOR;
-                $ae = abs($estimated_effort - floatval($project['actualEffort']));
-                $ret[] = array('actualEffort' => $project['actualEffort'], 'estimatedEffort' => $estimated_effort, 'ucp' => $UCP, 'ae' => $ae, 'xSimple' => $xSimple, 'xAverage' => $xAverage, 'xComplex' => $xComplex);
             }
+            $mae = Arithmatic::mae($results);
+            $data = array($mae);
+            $fp = fopen('../results/ardi2021.txt', 'a');
+            fputcsv($fp, $data);
+            fclose($fp);
+            $ret[] = $mae;
         }
         return $ret;
     }
@@ -570,35 +558,20 @@ $combinations = get_combinations(
     array(
         'particle_size' => array(10),
         'chaotic' => array('chebyshev'),
-
-        // 'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
-        // 'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($MAX_ITER = 1; $MAX_ITER <= 40; $MAX_ITER++) {
-        //$MAX_ITER = 40;
-        $MAX_TRIAL = 30;
-        $numDataset = count($dataset);
-        $swarm_size = $combination['particle_size'];
-        $max_counter = 100000;
+    $MAX_ITER = 40;
+    $MAX_TRIAL = 30;
+    $numDataset = count($dataset);
+    $swarm_size = $combination['particle_size'];
+    $max_counter = 100000;
 
-        $start = microtime(true);
-        $range_positions = ['min_xSimple' => 5, 'max_xSimple' => 7.49, 'min_xAverage' => 7.5, 'max_xAverage' => 12.49, 'min_xComplex' => 12.5, 'max_xComplex' => 15];
+    $start = microtime(true);
+    $range_positions = ['min_xSimple' => 5, 'max_xSimple' => 7.49, 'min_xAverage' => 7.5, 'max_xAverage' => 12.49, 'min_xComplex' => 12.5, 'max_xComplex' => 15];
 
-        $mpucwPSO = new MPUCWPSO($swarm_size, $range_positions);
-        $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
-
-        $mae = array_sum(array_column($optimized, 'ae')) / 71;
-        echo 'MAE: ' . $mae;
-        echo '&nbsp; &nbsp; ';
-        print_r($combination);
-        echo '<br>';
-
-        $data = array($mae, $MAX_ITER);
-        $fp = fopen('../results/ardi2021.txt', 'a');
-        fputcsv($fp, $data);
-        fclose($fp);
-    }
+    $mpucwPSO = new MPUCWPSO($swarm_size, $range_positions);
+    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
+    print_r($optimized);
 }
