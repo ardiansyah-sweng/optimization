@@ -238,7 +238,7 @@ $parameters = [
     'population_size' => 10,
     'fitness' => 1000,
     'max_generation' => 40,
-    'knapsack' => 105000
+    'knapsack' => 250000
 ];
 
 $solution = new Knapsack;

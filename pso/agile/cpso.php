@@ -1,6 +1,7 @@
 <?php
 set_time_limit(1000000);
 include 'chaotic_interface.php';
+include 'seeds_class.php';
 
 class Raoptimizer
 {
@@ -10,8 +11,8 @@ class Raoptimizer
     protected $max_counter = 100000;
     private $INERTIA_MAX = 0.9;
     private $INERTIA_MIN = 0.4;
-    private $C1 = 2;
-    private $C2 = 2;
+    private $C1 = 1.5;
+    private $C2 = 1.5;
 
     function __construct($dataset, $parameters, $dataset_name)
     {
@@ -66,46 +67,6 @@ class Raoptimizer
     function absoluteError($estimated, $actual)
     {
         return abs($estimated - floatval($actual));
-    }
-
-    function frictionFactorsRandomWeight()
-    {
-        $ff_team_composition = mt_rand($this->parameters['friction_factors']['ff_team_composition'] * 100, $this->parameters['friction_factors']['max']  * 100) / 100;
-        $ff_process = mt_rand($this->parameters['friction_factors']['ff_process'] * 100, $this->parameters['friction_factors']['max']  * 100) / 100;
-        $ff_environmental_factors = mt_rand($this->parameters['friction_factors']['ff_environmental_factors'] * 100, $this->parameters['friction_factors']['max']  * 100) / 100;
-        $ff_team_dynamics = mt_rand($this->parameters['friction_factors']['ff_environmental_factors'] * 100, $this->parameters['friction_factors']['max']  * 100) / 100;
-
-        return [
-            'ff_team_composition' => $ff_team_composition,
-            'ff_process' => $ff_process,
-            'ff_environmental_factors' => $ff_environmental_factors,
-            'ff_team_dynamics' => $ff_team_dynamics,
-        ];
-    }
-
-    function dynamicForceFactorsRandomWeight()
-    {
-        $dff_expected_team_change = mt_rand($this->parameters['dynamic_force_factors']['dff_expected_team_change'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_introduction_new_tools = mt_rand($this->parameters['dynamic_force_factors']['dff_introduction_new_tools'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_vendor_defect = mt_rand($this->parameters['dynamic_force_factors']['dff_vendor_defect'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_team_member_responsibility = mt_rand($this->parameters['dynamic_force_factors']['dff_team_member_responsibility'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_personal_issue = mt_rand($this->parameters['dynamic_force_factors']['dff_personal_issue'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_expected_delay = mt_rand($this->parameters['dynamic_force_factors']['dff_expected_delay'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_expected_ambiguity = mt_rand($this->parameters['dynamic_force_factors']['dff_expected_ambiguity'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_expected_change = mt_rand($this->parameters['dynamic_force_factors']['dff_expected_change'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-        $dff_expected_relocation = mt_rand($this->parameters['dynamic_force_factors']['dff_expected_relocation'] * 100, $this->parameters['dynamic_force_factors']['max']  * 100) / 100;
-
-        return [
-            'dff_expected_team_change' => $dff_expected_team_change,
-            'dff_introduction_new_tools' => $dff_introduction_new_tools,
-            'dff_vendor_defect' => $dff_vendor_defect,
-            'dff_team_member_responsibility' => $dff_team_member_responsibility,
-            'dff_personal_issue' => $dff_personal_issue,
-            'dff_expected_delay' => $dff_expected_delay,
-            'dff_expected_ambiguity' => $dff_expected_ambiguity,
-            'dff_expected_change' => $dff_expected_change,
-            'dff_expected_relocation' => $dff_expected_relocation
-        ];
     }
 
     function products($weights)
@@ -183,12 +144,35 @@ class Raoptimizer
             return new Exception("gbest position particle is not an array");
         }
         foreach ($parameters['pbests'] as $key => $pbest) {
-            $ret[$key] = ($parameters['w'] * $parameters['velocity']) + (($parameters['c1'] * $parameters['r1']) * ($pbest - $parameters['positions'][$key])) + (($parameters['c2'] * $parameters['r2']) * ($parameters['gbests'][$key] - $parameters['positions'][$key]));
+            $ret[$key] = ($parameters['w'] * $parameters['velocity']) + (($parameters['c1'] * $parameters['r1']) * (floatval($pbest) - floatval($parameters['positions'][$key]))) + (($parameters['c2'] * $parameters['r2']) * (floatval($parameters['gbests'][$key]) - floatval($parameters['positions'][$key])));
         }
         return $ret;
     }
 
-    function agile($target_projects)
+    function split($seeds)
+    {
+        return [
+            'ff' => [
+                $seeds['ff_team_composition'],
+                $seeds['ff_process'],
+                $seeds['ff_environmental_factors'],
+                $seeds['ff_team_dynamics']
+            ],
+            'dff' => [
+                $seeds['dff_expected_team_change'],
+                $seeds['dff_introduction_new_tools'],
+                $seeds['dff_vendor_defect'],
+                $seeds['dff_team_member_responsibility'],
+                $seeds['dff_personal_issue'],
+                $seeds['dff_expected_delay'],
+                $seeds['dff_expected_ambiguity'],
+                $seeds['dff_expected_change'],
+                $seeds['dff_expected_relocation']
+            ]
+        ];
+    }
+
+    function agile($target_projects, $initial_populations)
     {
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
             $chaoticFactory = new ChaoticFactory();
@@ -204,8 +188,8 @@ class Raoptimizer
                 $vel[$generation + 1] = $this->randomzeroToOne();
 
                 for ($i = 0; $i <= $this->parameters['particle_size'] - 1; $i++) {
-                    $friction_factor_weights = $this->frictionFactorsRandomWeight();
-                    $dynamic_force_factor_weights = $this->dynamicForceFactorsRandomWeight();
+                    $friction_factor_weights = $this->split($initial_populations[$i])['ff'];
+                    $dynamic_force_factor_weights = $this->split($initial_populations[$i])['dff'];
                     $friction_factor = $this->products($friction_factor_weights);
                     $dynamic_force_factor = $this->products($dynamic_force_factor_weights);
                     $deceleration = $this->deceleration($friction_factor, $dynamic_force_factor);
@@ -266,7 +250,7 @@ class Raoptimizer
                         $positions_ff[$key] = $particles[$generation][$i]['friction_factors_weights'][$key] + $velocities;
                     }
                     foreach ($vel[$generation + 1]['dynamic_force_factor_weights'] as $key => $velocities) {
-                        $positions_dff[$key] = $particles[$generation][$i]['dynamic_force_factor_weights'][$key] + $velocities;
+                        $positions_dff[$key] = floatval($particles[$generation][$i]['dynamic_force_factor_weights'][$key]) + $velocities;
                     }
 
                     foreach ($positions_ff as $key => $ff) {
@@ -330,30 +314,35 @@ class Raoptimizer
 
     function processingDataset()
     {
-        $data_set = $this->prepareDataset();
-        foreach ($data_set as $key => $target_project) {
-            if ($key >= 0) {
-                for ($i = 0; $i <= $this->parameters['trials'] - 1; $i++) {
-                    $results[] = $this->agile($target_project);
-                }
-                $friction_factor_weights = $this->ffAverageWeights($results);
-                $dynamic_force_factor_weights = $this->dffAverageWeights($results);
-                $friction_factor = $this->products($friction_factor_weights);
-                $dynamic_force_factor = $this->products($dynamic_force_factor_weights);
-                $deceleration = $this->deceleration($friction_factor, $dynamic_force_factor);
-                $velocity = $this->velocity($target_project['Vi'], $deceleration);
-                $estimated_time = $this->estimatedTimeInDays($target_project['effort'], $velocity);
-                $absolute_error = $this->absoluteError($estimated_time, $target_project['actual_time']);
+        $datasets = [
+            'filename' => 'seeds.txt',
+            'index' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            'name' => ['ff_team_composition', 'ff_process', 'ff_environmental_factors', 'ff_team_dynamics', 'dff_expected_team_change', 'dff_introduction_new_tools', 'dff_vendor_defect', 'dff_team_member_responsibility', 'dff_personal_issue', 'dff_expected_delay', 'dff_expected_ambiguity', 'dff_expected_change', 'dff_expected_relocation']
+        ];
+        $initial_populations = new Read($datasets);
+        $seeds = $initial_populations->datasetFile();
+        $end = [];
 
-                $ret[] = [
-                    'friction_factors_weights' => $friction_factor_weights,
-                    'dynamic_force_factor_weights' => $dynamic_force_factor_weights,
-                    'actual_time' => floatval($target_project['actual_time']),
-                    'estimated_time' => $estimated_time,
-                    'ae' => $absolute_error
-                ];
-                $results = [];
+        $data_set = $this->prepareDataset();
+        for ($i = 0; $i <= $this->parameters['trials'] - 1; $i++) {
+            foreach ($data_set as $key => $target_project) {
+                if ($key >= 0) {
+                    if ($i === 0) {
+                        $start = 0;
+                    } else {
+                        $start = $end[$i - 1] + 1;
+                    }
+                    $end[$i] = $start + ($this->parameters['particle_size'] - 1);
+                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $results[] = $this->agile($target_project, $initial_populations);
+                }
             }
+            $mae = Arithmatic::mae($results);
+            $data = array($mae);
+            $fp = fopen('../results/tharwat.txt', 'a');
+            fputcsv($fp, $data);
+            fclose($fp);
+            $ret[] = $mae;
         }
         return $ret;
     }
@@ -393,50 +382,40 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($maximum_generation = 1; $maximum_generation <= 40; $maximum_generation++) {
-        $particle_size = $combination['particle_size'];
-        //$maximum_generation = 40;
-        $trials = 30;
-        $fitness = 0.1;
-        $friction_factors = [
-            'ff_team_composition' => 0.91,
-            'ff_process' => 0.89,
-            'ff_environmental_factors' => 0.96,
-            'ff_team_dynamics' => 0.85,
-            'max' => 1
-        ];
-        $dynamic_force_factors = [
-            'dff_expected_team_change' => 0.91,
-            'dff_introduction_new_tools' => 0.96,
-            'dff_vendor_defect' => 0.90,
-            'dff_team_member_responsibility' => 0.98,
-            'dff_personal_issue' => 0.98,
-            'dff_expected_delay' => 0.96,
-            'dff_expected_ambiguity' => 0.95,
-            'dff_expected_change' => 0.97,
-            'dff_expected_relocation' => 0.98,
-            'max' => 1
-        ];
-        $parameters = [
-            'particle_size' => $particle_size,
-            'maximum_generation' => $maximum_generation,
-            'trials' => $trials,
-            'fitness' => $fitness,
-            'friction_factors' => $friction_factors,
-            'dynamic_force_factors' => $dynamic_force_factors
-        ];
+    $particle_size = $combination['particle_size'];
+    $maximum_generation = 40;
+    $trials = 30;
+    $fitness = 0.1;
+    $friction_factors = [
+        0.91,
+        0.89,
+        0.96,
+        0.85,
+        'max' => 1
+    ];
+    $dynamic_force_factors = [
+        0.91,
+        0.96,
+        0.90,
+        0.98,
+        0.98,
+        0.96,
+        0.95,
+        0.97,
+        0.98,
+        'max' => 1
+    ];
+    $parameters = [
+        'particle_size' => $particle_size,
+        'maximum_generation' => $maximum_generation,
+        'trials' => $trials,
+        'fitness' => $fitness,
+        'friction_factors' => $friction_factors,
+        'dynamic_force_factors' => $dynamic_force_factors
+    ];
 
-        $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
-        $optimized = $optimize->processingDataset();
+    $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
+    $optimized = $optimize->processingDataset();
 
-        $mae = array_sum(array_column($optimized, 'ae')) / 21;
-        echo 'MAE: ' . $mae;
-        echo '&nbsp; &nbsp; ';
-        print_r($combination);
-        echo '<br>';
-        $data = array($mae, $maximum_generation);
-        $fp = fopen('../results/tharwat.txt', 'a');
-        fputcsv($fp, $data);
-        fclose($fp);
-    }
+    print_r($optimized);
 }

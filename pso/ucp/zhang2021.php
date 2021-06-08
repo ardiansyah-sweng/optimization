@@ -1,6 +1,6 @@
 <?php
-set_time_limit(10000);
-include '../chaotic_interface.php';
+set_time_limit(100000000);
+include 'chaotic_interface.php';
 
 class MPUCWPSO
 {
@@ -110,10 +110,10 @@ class MPUCWPSO
         array_multisort(array_column($particles, 'ae'), SORT_ASC, $particles);
         $rank = array_search($particle['ae'], array_column($particles, 'ae'));
         $b = 1;
-        if ($rank <= ($this->swarm_size/4) ){
-            $b = 2/3;
+        if ($rank <= ($this->swarm_size / 4)) {
+            $b = 2 / 3;
         }
-        if ($rank >= (3 * $this->swarm_size)/4 ){
+        if ($rank >= (3 * $this->swarm_size) / 4) {
             $b = 1.5;
         }
         return $b;
@@ -161,7 +161,7 @@ class MPUCWPSO
             if ($iterasi > 0) {
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
-                   
+
                     //Inertia weight
                     $w_ini = $this->INERTIA_MAX;
                     $w_fin = $this->INERTIA_MIN;
@@ -172,7 +172,7 @@ class MPUCWPSO
 
                     $b = $this->RIW($particles[$iterasi][$i], $particles[$iterasi]);
                     $w = $b * $w_cos;
-                    
+
                     if (($I[$iterasi] <= $max_iter) / 6) {
                         $a = 4 / 3;
                     }
@@ -397,32 +397,41 @@ $combinations = get_combinations(
     array(
         //'particle_size' => array(10),
         'chaotic' => array('cosine'),
-        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'particle_size' => array(100),
         //'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    $MAX_ITER = 40;
-    $MAX_TRIAL = 30;
-    $numDataset = count($dataset);
-    $swarm_size = $combination['particle_size'];
-    $max_counter = 100000;
+    for ($i = 0; $i <= 28 - 1; $i++) {
+        $MAX_ITER = 40;
+        $MAX_TRIAL = 1000;
+        $numDataset = count($dataset);
+        $swarm_size = $combination['particle_size'];
+        $max_counter = 100000;
 
-    $start = microtime(true);
-    $range_positions = ['min_xSimple' => 5, 'max_xSimple' => 7.49, 'min_xAverage' => 7.5, 'max_xAverage' => 12.49, 'min_xComplex' => 12.5, 'max_xComplex' => 15];
+        $start = microtime(true);
+        $range_positions = [
+            'min_xSimple' => 5, 
+            'max_xSimple' => 7.49, 
+            'min_xAverage' => 7.5, 
+            'max_xAverage' => 12.49, 
+            'min_xComplex' => 12.5, 
+            'max_xComplex' => 15
+        ];
 
-    $mpucwPSO = new MPUCWPSO($swarm_size, $range_positions);
-    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
+        $mpucwPSO = new MPUCWPSO($swarm_size, $range_positions);
+        $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
 
-    $mae = array_sum(array_column($optimized, 'ae')) / 71;
-    echo 'MAE: ' . $mae;
-    echo '&nbsp; &nbsp; ';
-    print_r($combination);
-    echo '<br>';
+        $mae = array_sum(array_column($optimized, 'ae')) / 71;
+        echo 'MAE: ' . $mae;
+        echo '&nbsp; &nbsp; ';
+        print_r($combination);
+        echo '<br>';
 
-    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
-    $fp = fopen('results/zhang2021.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
+        $data = array($mae, $combination['particle_size']);
+        $fp = fopen('../results/zhang2021.txt', 'a');
+        fputcsv($fp, $data);
+        fclose($fp);
+    }
 }

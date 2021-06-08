@@ -1,6 +1,6 @@
 <?php
 set_time_limit(1000000);
-include 'seeds.txt';
+include 'seeds_mpso_mucpso.txt';
 
 class Read
 {
@@ -407,7 +407,7 @@ class ParticleSwarmOptimizer
     function finishing()
     {
         $datasets = [
-            'filename' => 'seeds.txt',
+            'filename' => 'seeds_mpso_mucpso.txt',
             'index' => [0, 1, 2],
             'name' => ['simple', 'average', 'complex']
         ];

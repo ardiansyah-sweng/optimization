@@ -2,11 +2,6 @@
 
 class Random
 {
-    public static function zeroToOne()
-    {
-        return (float) rand() / (float) getrandmax();
-    }
-
     public static function ucWeight($position_ranges)
     {
         $simple = mt_rand($position_ranges['simple']['min'] * 100, $position_ranges['simple']['max'] * 100) / 100;
@@ -20,7 +15,7 @@ class Random
     }
 }
 
-$population_size = 10;
+$population_size = 100;
 $random_seeds = 30;
 
 $position_ranges = [
@@ -39,7 +34,7 @@ print_r($positions);
 
 foreach ($positions as $position) {
     $data = array($position['xSimple'], $position['xAverage'], $position['xComplex']);
-    $fp = fopen('seeds.txt', 'a');
+    $fp = fopen('seeds_spso_cpso.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }

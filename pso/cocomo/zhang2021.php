@@ -378,7 +378,7 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($i = 0; $i <= 30 - 1; $i++) {
+    for ($i = 1; $i <= 30; $i++) {
         $MAX_ITER = 40;
         $MAX_TRIAL = 1000;
         $swarm_size = $combination['particle_size'];
