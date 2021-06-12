@@ -403,7 +403,7 @@ $combinations = get_combinations(
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($i = 0; $i <= 28 - 1; $i++) {
+    for ($i = 0; $i <= 13 - 1; $i++) {
         $MAX_ITER = 40;
         $MAX_TRIAL = 1000;
         $numDataset = count($dataset);
@@ -412,11 +412,11 @@ foreach ($combinations as $key => $combination) {
 
         $start = microtime(true);
         $range_positions = [
-            'min_xSimple' => 5, 
-            'max_xSimple' => 7.49, 
-            'min_xAverage' => 7.5, 
-            'max_xAverage' => 12.49, 
-            'min_xComplex' => 12.5, 
+            'min_xSimple' => 5,
+            'max_xSimple' => 7.49,
+            'min_xAverage' => 7.5,
+            'max_xAverage' => 12.49,
+            'min_xComplex' => 12.5,
             'max_xComplex' => 15
         ];
 
