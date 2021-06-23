@@ -26,13 +26,13 @@ rentangposisi = {
 }
 
 projectactual = {
-    'simpleUC': 6,
-    'averageUC': 10,
+    'simpleUC': 4,
+    'averageUC': 20,
     'complexUC': 15,
-    'uaw': 9,
-    'tcf': 0.81,
-    'ecf': 0.84,
-    'actualEffort': 7970
+    'uaw': 8,
+    'tcf': 0.99,
+    'ecf': 0.99,
+    'actualEffort': 7962
 }
 
 

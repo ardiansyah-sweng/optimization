@@ -1,8 +1,9 @@
 <?php
-set_time_limit(1000000);
+set_time_limit(10000);
 include 'chaotic_interface.php';
 include 'raw_data_interface.php';
 include 'data_preprocessing.php';
+include 'seeds_class.php';
 
 class MPUCWPSO
 {
@@ -53,7 +54,7 @@ class MPUCWPSO
 
     function estimating($A, $size, $E, $effort_multipliers)
     {
-        return $A * pow($size, $E) * array_product($effort_multipliers);
+        return floatval($A) * pow($size, $E) * array_product($effort_multipliers);
     }
 
     /**
@@ -64,48 +65,12 @@ class MPUCWPSO
         return (float) rand() / (float) getrandmax();
     }
 
-    function uniformInitialization()
-    {
-        $n = $this->swarm_size;
-        $X1 = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
-        for ($i = 1; $i <= $n - 1; $i++) {
-            $R[$i] = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
-        }
-        foreach ($R as $key => $r) {
-            $A = $X1 + $r / $n * ($this->upper_bound - $this->lower_bound);
-
-            if ($A > $this->upper_bound) {
-                $A = $A - ($this->upper_bound - $this->lower_bound);
-            }
-
-            if (($key - 1) == 0) {
-                $ret[0] = ['A' => $X1];
-            }
-            $ret[$key] = ['A' => $A];
-        }
-        return $ret;
-    }
-
-    function RIW($particle, $particles)
-    {
-        array_multisort(array_column($particles, 'ae'), SORT_ASC, $particles);
-        $rank = array_search($particle['ae'], array_column($particles, 'ae'));
-        $b = 1;
-        if ($rank <= ($this->swarm_size / 4)) {
-            $b = 2 / 3;
-        }
-        if ($rank >= (3 * $this->swarm_size) / 4) {
-            $b = 1.5;
-        }
-        return $b;
-    }
-
     function velocity($parameters)
     {
-        return ($parameters['w'] * $parameters['velocity']) + (($parameters['c1'] * $parameters['r1']) * ($parameters['pbest'] - $parameters['position'])) + (($parameters['c2'] * $parameters['r2']) * ($parameters['gbest'] - $parameters['position']));
+        return ($parameters['w'] * $parameters['velocity']) + (($parameters['c1'] * $parameters['r1']) * (floatval($parameters['pbest']) - floatval($parameters['position']))) + (($parameters['c2'] * $parameters['r2']) * (floatval($parameters['gbest']) - floatval($parameters['position'])));
     }
 
-    function Main($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type)
+    function Main($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type, $initial_populations)
     {
         $SF['prec'] = $dataset['prec'];
         $SF['flex'] = $dataset['flex'];
@@ -130,23 +95,19 @@ class MPUCWPSO
         $EM['site'] = $dataset['site'];
         $EM['sced'] = $dataset['sced'];
 
-
         ##Masuk Iterasi
         for ($iterasi = 0; $iterasi <= $max_iter; $iterasi++) {
-
-            $chaoticFactory = new ChaoticFactory();
-            $chaos = $chaoticFactory->initializeChaotic($chaotic_type, $iterasi);
-            $B = $this->randomzeroToOne();
             $r1 = $this->randomZeroToOne();
             $r2 = $this->randomZeroToOne();
+            $B = $this->randomzeroToOne();
+            $w = $this->INERTIA_MIN - ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
             if ($iterasi == 0) {
-                $I[$iterasi + 1] = $iterasi;
                 $velocity[$iterasi + 1] = $this->randomzeroToOne();
 
                 ##Generate Population
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
-                    $A = $this->uniformInitialization()[$i]['A'];
+                    $A = $initial_populations[$i]['A'];
                     $E = $this->scaleEffortExponent($B, $SF);
                     $estimated_effort = $this->estimating($A, $dataset['kloc'], $E, $EM);
                     $particles[$iterasi + 1][$i] = [
@@ -160,39 +121,18 @@ class MPUCWPSO
                     ];
                 }
                 $Pbest[$iterasi + 1] = $particles[$iterasi + 1];
-                foreach ($Pbest[$iterasi + 1] as $pbest) {
-                    $pbests[] = $pbest['ae'];
-                }
-                $index = array_search(min($pbests), array_column($Pbest[$iterasi + 1], 'ae'));
+
+                $min = min(array_column($Pbest[$iterasi + 1], 'ae'));
+                $index = array_search($min, $Pbest[$iterasi + 1]);
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
-            } // End of iterasi==0
+            } ## End if iterasi==0
 
             if ($iterasi > 0) {
+                //Inertia weight
+
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
-                    //Inertia weight
-                    $w_ini = $this->INERTIA_MAX;
-                    $w_fin = $this->INERTIA_MIN;
-
-                    $chaos->I = $I[$iterasi];
-                    $cosine = $chaos->chaotic($max_iter);
-                    $w_cos = ((($w_ini + $w_fin) / 2) + (($w_ini - $w_fin) / 2)) * $cosine;
-
-                    $b = $this->RIW($particles[$iterasi][$i], $particles[$iterasi]);
-                    $w = $b * $w_cos;
-
-                    if (($I[$iterasi] <= $max_iter) / 6) {
-                        $a = 4 / 3;
-                    }
-                    if (($max_iter / 6) < $I[$iterasi] && $I[$iterasi] <= (5 * $max_iter) / 6) {
-                        $a = 16 / 3;
-                    }
-                    if ((5 * $max_iter) / 6 < $I[$iterasi] && $I[$iterasi] <= $max_iter) {
-                        $a = 2 / 9;
-                    }
-                    $I[$iterasi + 1] = $I[$iterasi] + $a;
-
                     $parameters = [
                         'w' => $w,
                         'velocity' => $velocity[$iterasi],
@@ -206,7 +146,7 @@ class MPUCWPSO
                     ];
 
                     $velocity[$iterasi + 1] = $this->velocity($parameters);
-                    $A = $particles[$iterasi][$i]['A'] + $velocity[$iterasi + 1];
+                    $A = floatval($particles[$iterasi][$i]['A']) + $velocity[$iterasi + 1];
 
                     //exceeding limit
                     if ($A < $this->lower_bound) {
@@ -242,7 +182,7 @@ class MPUCWPSO
                 $index = array_search($min_ae, $Pbest[$iterasi + 1]);
 
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
-            } // End of iterasi > 0
+            } ## End if iterasi > 0
 
             //Fitness value evaluation
             $results = [];
@@ -261,70 +201,86 @@ class MPUCWPSO
 
     function finishing($project, $max_iter, $swarm_size, $max_counter, $chaotic_type, $max_trial)
     {
-        foreach ($this->prepareDataset() as $key => $project) {
-            if ($key >= 0) {
-                $projects['prec'] = $this->scales['prec'][$project['prec']];
-                $projects['flex'] = $this->scales['flex'][$project['flex']];
-                $projects['resl'] = $this->scales['resl'][$project['resl']];
-                $projects['team'] = $this->scales['team'][$project['team']];
-                $projects['pmat'] = $this->scales['pmat'][$project['pmat']];
-                $projects['rely'] = $this->scales['rely'][$project['rely']];
-                $projects['data'] = $this->scales['data'][$project['data']];
-                $projects['cplx'] = $this->scales['cplx'][$project['cplx']];
-                $projects['ruse'] = $this->scales['ruse'][$project['ruse']];
-                $projects['docu'] = $this->scales['docu'][$project['docu']];
-                $projects['time'] = $this->scales['time'][$project['time']];
-                $projects['stor'] = $this->scales['stor'][$project['stor']];
-                $projects['pvol'] = $this->scales['pvol'][$project['pvol']];
-                $projects['acap'] = $this->scales['acap'][$project['acap']];
-                $projects['pcap'] = $this->scales['pcap'][$project['pcap']];
-                $projects['pcon'] = $this->scales['pcon'][$project['pcon']];
-                $projects['apex'] = $this->scales['apex'][$project['apex']];
-                $projects['plex'] = $this->scales['plex'][$project['plex']];
-                $projects['ltex'] = $this->scales['ltex'][$project['ltex']];
-                $projects['tool'] = $this->scales['tool'][$project['tool']];
-                $projects['site'] = $this->scales['site'][$project['site']];
-                $projects['sced'] = $this->scales['sced'][$project['sced']];
-                $projects['kloc'] = $project['kloc'];
-                $projects['effort'] = $project['effort'];
-                $projects['defects'] = $project['defects'];
-                $projects['months'] = $project['months'];
+        $datasets = [
+            'filename' => 'seeds.txt',
+            'index' => 0,
+            'name' => 'A'
+        ];
 
-                $SF['prec'] = $projects['prec'];
-                $SF['flex'] = $projects['flex'];
-                $SF['resl'] = $projects['resl'];
-                $SF['team'] = $projects['team'];
-                $SF['pmat'] = $projects['pmat'];
-                $EM['rely'] = $projects['rely'];
-                $EM['data'] = $projects['data'];
-                $EM['cplx'] = $projects['cplx'];
-                $EM['ruse'] = $projects['ruse'];
-                $EM['docu'] = $projects['docu'];
-                $EM['time'] = $projects['time'];
-                $EM['stor'] = $projects['stor'];
-                $EM['pvol'] = $projects['pvol'];
-                $EM['acap'] = $projects['acap'];
-                $EM['pcap'] = $projects['pcap'];
-                $EM['pcon'] = $projects['pcon'];
-                $EM['apex'] = $projects['apex'];
-                $EM['plex'] = $projects['plex'];
-                $EM['ltex'] = $projects['ltex'];
-                $EM['tool'] = $projects['tool'];
-                $EM['site'] = $projects['site'];
-                $EM['sced'] = $projects['sced'];
+        $initial_populations = new Read($datasets);
+        $seeds = $initial_populations->datasetFile();
+        $end = [];
 
-                for ($i = 0; $i <= $max_trial - 1; $i++) {
-                    $results[] = $this->Main($projects, $max_iter, $swarm_size, $max_counter, $chaotic_type);
+        for ($i = 0; $i <= $max_trial - 1; $i++) {
+            foreach ($this->prepareDataset() as $key => $project) {
+                if ($key >= 0) {
+                    $projects['prec'] = $this->scales['prec'][$project['prec']];
+                    $projects['flex'] = $this->scales['flex'][$project['flex']];
+                    $projects['resl'] = $this->scales['resl'][$project['resl']];
+                    $projects['team'] = $this->scales['team'][$project['team']];
+                    $projects['pmat'] = $this->scales['pmat'][$project['pmat']];
+                    $projects['rely'] = $this->scales['rely'][$project['rely']];
+                    $projects['data'] = $this->scales['data'][$project['data']];
+                    $projects['cplx'] = $this->scales['cplx'][$project['cplx']];
+                    $projects['ruse'] = $this->scales['ruse'][$project['ruse']];
+                    $projects['docu'] = $this->scales['docu'][$project['docu']];
+                    $projects['time'] = $this->scales['time'][$project['time']];
+                    $projects['stor'] = $this->scales['stor'][$project['stor']];
+                    $projects['pvol'] = $this->scales['pvol'][$project['pvol']];
+                    $projects['acap'] = $this->scales['acap'][$project['acap']];
+                    $projects['pcap'] = $this->scales['pcap'][$project['pcap']];
+                    $projects['pcon'] = $this->scales['pcon'][$project['pcon']];
+                    $projects['apex'] = $this->scales['apex'][$project['apex']];
+                    $projects['plex'] = $this->scales['plex'][$project['plex']];
+                    $projects['ltex'] = $this->scales['ltex'][$project['ltex']];
+                    $projects['tool'] = $this->scales['tool'][$project['tool']];
+                    $projects['site'] = $this->scales['site'][$project['site']];
+                    $projects['sced'] = $this->scales['sced'][$project['sced']];
+                    $projects['kloc'] = $project['kloc'];
+                    $projects['effort'] = $project['effort'];
+                    $projects['defects'] = $project['defects'];
+                    $projects['months'] = $project['months'];
+
+                    $SF['prec'] = $projects['prec'];
+                    $SF['flex'] = $projects['flex'];
+                    $SF['resl'] = $projects['resl'];
+                    $SF['team'] = $projects['team'];
+                    $SF['pmat'] = $projects['pmat'];
+                    $EM['rely'] = $projects['rely'];
+                    $EM['data'] = $projects['data'];
+                    $EM['cplx'] = $projects['cplx'];
+                    $EM['ruse'] = $projects['ruse'];
+                    $EM['docu'] = $projects['docu'];
+                    $EM['time'] = $projects['time'];
+                    $EM['stor'] = $projects['stor'];
+                    $EM['pvol'] = $projects['pvol'];
+                    $EM['acap'] = $projects['acap'];
+                    $EM['pcap'] = $projects['pcap'];
+                    $EM['pcon'] = $projects['pcon'];
+                    $EM['apex'] = $projects['apex'];
+                    $EM['plex'] = $projects['plex'];
+                    $EM['ltex'] = $projects['ltex'];
+                    $EM['tool'] = $projects['tool'];
+                    $EM['site'] = $projects['site'];
+                    $EM['sced'] = $projects['sced'];
+
+                    if ($i === 0) {
+                        $start = 0;
+                    } else {
+                        $start = $end[$i - 1] + 1;
+                    }
+                    $end[$i] = $start + ($this->swarm_size - 1);
+                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $results[] = $this->Main($projects, $max_iter, $swarm_size, $max_counter, $chaotic_type, $initial_populations);
                 }
-                $A = array_sum(array_column($results, 'A')) / $this->trials;
-                $B = array_sum(array_column($results, 'B')) / $this->trials;
-                $results = [];
-                $E = $this->scaleEffortExponent($B, $SF);
-                $effort = $project['effort'];
-                $estimatedEffort = $this->estimating($A, $project['kloc'], $E, $EM);
-                $ae = abs($estimatedEffort - $effort);
-                $ret[] = array('A' => $A, 'B' => $B, 'E' => $E, 'effort' => $effort, 'estimatedEffort' => $estimatedEffort, 'ae' => $ae);
             }
+            $mae = Arithmatic::mae($results);
+            $data = array($mae);
+            $fp = fopen('../results/psorigin.txt', 'a');
+            fputcsv($fp, $data);
+            fclose($fp);
+            $ret[] = $mae;
+            $results = [];
         }
         return $ret;
     }
@@ -372,32 +328,20 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'chaotic' => array('cosine'),
-        'particle_size' => array(40),
+        'chaotic' => array('sinu'),
+        'particle_size' => array(60),
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($i = 1; $i <= 15; $i++) {
-        $MAX_ITER = 40;
-        $MAX_TRIAL = 1000;
-        $swarm_size = $combination['particle_size'];
-        $max_counter = 100000;
+    $MAX_ITER = 40;
+    $MAX_TRIAL = 30;
+    $swarm_size = $combination['particle_size'];
+    $max_counter = 100000;
 
-        $start = microtime(true);
+    $start = microtime(true);
 
-        $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
-        $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
-
-        $mae = array_sum(array_column($optimized, 'ae')) / 93;
-        echo 'MAE: ' . $mae;
-        echo '&nbsp; &nbsp; ';
-        print_r($combination);
-        echo '<br>';
-
-        $data = array($mae, $combination['particle_size']);
-        $fp = fopen('../results/zhang_cocomo.txt', 'a');
-        fputcsv($fp, $data);
-        fclose($fp);
-    }
+    $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
+    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL);
+    print_r($optimized);
 }

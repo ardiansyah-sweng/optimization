@@ -19,9 +19,10 @@ class Read
         foreach ($raw_dataset as $val) {
             $data[] = explode(",", $val);
         }
+
         foreach ($data as $key => $val) {
             foreach (array_keys($val) as $subkey) {
-                if ($subkey == $this->index[$subkey]) {
+                if ($subkey == $this->index) {
                     $data[$key][$this->column[$subkey]] = $data[$key][$subkey];
                     unset($data[$key][$subkey]);
                 }

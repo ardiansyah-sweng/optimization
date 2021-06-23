@@ -427,7 +427,7 @@ class MPUCWPSO
     function finishing($dataset, $max_iter, $swarm_size, $max_counter, $chaotic_type, $max_trial)
     {
         $datasets = [
-            'filename' => 'seeds.txt',
+            'filename' => 'seeds_mpso_mucpso.txt',
             'index' => [0, 1, 2],
             'name' => ['simple', 'average', 'complex']
         ];
@@ -435,7 +435,7 @@ class MPUCWPSO
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
         $end = [];
-
+        $ret = [];
         for ($i = 0; $i <= $max_trial - 1; $i++) {
             foreach ($dataset as $key => $project) {
                 if ($key >= 0) {

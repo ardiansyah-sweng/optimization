@@ -1,5 +1,5 @@
 <?php
-set_time_limit(1000000);
+set_time_limit(10000000);
 include 'chaotic_interface.php';
 include 'seeds_class.php';
 
@@ -169,13 +169,10 @@ class Raoptimizer
 
     function uniformInitializationFF($R)
     {
-        //print_r($R);
-        //echo '<p>';
         $n = $this->parameters['particle_size'];
 
         $X1 = $this->frictionFactorsRandomWeight();
-        //print_r($X1);
-        //exit();
+
         foreach ($R as $key => $r) {
             $A['friction_factors'] = [
                 'ff_team_composition' => $X1['ff_team_composition'] + $r['ff_team_composition'] / $n * ($this->parameters['friction_factors']['max']  - $this->parameters['friction_factors']['ff_team_composition']),
@@ -206,20 +203,6 @@ class Raoptimizer
             $ret[$key] = ['A' => $A['friction_factors']];
         }
         return $ret;
-    }
-
-    function RIW($particle, $particles)
-    {
-        array_multisort(array_column($particles, 'ae'), SORT_ASC, $particles);
-        $rank = array_search($particle['ae'], array_column($particles, 'ae'));
-        $b = 1;
-        if ($rank <= ($this->parameters['particle_size'] / 4)) {
-            $b = 2 / 3;
-        }
-        if ($rank >= (3 * $this->parameters['particle_size']) / 4) {
-            $b = 1.5;
-        }
-        return $b;
     }
 
     function uniformInitializationDFF($R)
@@ -335,14 +318,15 @@ class Raoptimizer
     {
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
             $chaoticFactory = new ChaoticFactory();
-            $chaos = $chaoticFactory->initializeChaotic('cosine', $generation);
-            $r1 = $this->randomZeroToOne();
-            $r2 = $this->randomZeroToOne();
+            $chaos = $chaoticFactory->initializeChaotic('sinu', $generation);
 
             ## Generate population
             if ($generation === 0) {
-                $I[$generation + 1] = $generation;
+                $r1[$generation + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $r2[$generation + 1] = $chaos->chaotic($this->randomzeroToOne());
+                $r[$generation + 1] = $chaos->chaotic($this->randomzeroToOne());
                 $vel[$generation + 1] = $this->randomzeroToOne();
+
                 for ($i = 0; $i <= $this->parameters['particle_size'] - 1; $i++) {
                     // $friction_factor_weights = $this->uniformInitializationFF($initial_populations)[$i];
                     // $dynamic_force_factor_weights = $this->uniformInitializationDFF($initial_populations)[$i];
@@ -363,7 +347,6 @@ class Raoptimizer
                     }
                     $friction_factor_weights['A'] = $friction_factor_weights;
                     $dynamic_force_factor_weights['A'] = $dynamic_force_factor_weights;
-                    //print_r($friction_factor_weights);exit();
 
                     $friction_factor = $this->products($friction_factor_weights['A']);
                     $dynamic_force_factor = $this->products($dynamic_force_factor_weights['A']);
@@ -382,29 +365,55 @@ class Raoptimizer
                 }
                 $Pbest[$generation + 1] = $particles[$generation + 1];
                 $GBest[$generation + 1] = $this->minimalAE($particles[$generation + 1]);
+
+                //Fungsi SPbest
+                $CPbestIndex1 = array_rand($Pbest[$generation + 1]);
+                $CPbestIndex2 = array_rand($Pbest[$generation + 1]);
+                $CPbest1 = $Pbest[$generation + 1][$CPbestIndex1];
+                $CPbest2 = $Pbest[$generation + 1][$CPbestIndex2];
+
+                $counter = 0;
+                while ($counter < $this->max_counter) {
+                    if ($CPbestIndex1 == $CPbestIndex2) {
+                        $CPbestIndex1 = array_rand($Pbest[$generation + 1]);
+                        $CPbestIndex2 = array_rand($Pbest[$generation + 1]);
+                        $CPbest1 = $Pbest[$generation + 1][$CPbestIndex1];
+                        $CPbest2 = $Pbest[$generation + 1][$CPbestIndex2];
+                        $counter = 0;
+                    } else {
+                        break;
+                    }
+                }
+
+                if ($CPbestIndex1 != $CPbestIndex2) {
+                    if ($CPbest1['ae'] < $CPbest2['ae']) {
+                        $CPbest = $CPbest1;
+                    }
+                    if ($CPbest1['ae'] > $CPbest2['ae']) {
+                        $CPbest = $CPbest2;
+                    }
+                    if ($CPbest1['ae'] == $CPbest2['ae']) {
+                        $CPbest = $CPbest2;
+                    }
+                    //compared CPbest with all Pbest_i(t-1)
+                    foreach ($Pbest[$generation + 1] as $key => $val) {
+                        if ($CPbest['ae'] < $val['ae']) {
+                            $Pbest[$generation + 1][$key] = $CPbest;
+                        }
+                    }
+                }
+                $SPbest[$generation + 1] = $Pbest[$generation + 1];
             } ## End if generation = 0
 
             if ($generation > 0) {
+                $r1[$generation + 1] = $chaos->chaotic($r1[$generation]);
+                $r2[$generation + 1] = $chaos->chaotic($r2[$generation]);
+                //Inertia weight
+                $r[$generation + 1] = $chaos->chaotic($r[$generation]);
+
+                $w = $r[$generation] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $generation) / $this->parameters['maximum_generation']);
+
                 foreach ($particles[$generation] as $i => $individu) {
-                    $w_ini = $this->INERTIA_MAX;
-                    $w_fin = $this->INERTIA_MIN;
-                    $chaos->I = $I[$generation];
-
-                    $cosine = $chaos->chaotic($this->parameters['maximum_generation']);
-                    $w_cos = ((($w_ini + $w_fin) / 2) + (($w_ini - $w_fin) / 2)) * $cosine;
-                    $b = $this->RIW($particles[$generation][$i], $particles[$generation]);
-                    $w = $b * $w_cos;
-
-                    if (($I[$generation] <= $this->parameters['maximum_generation']) / 6) {
-                        $a = 4 / 3;
-                    }
-                    if (($this->parameters['maximum_generation'] / 6) < $I[$generation] && $I[$generation] <= (5 * $this->parameters['maximum_generation']) / 6) {
-                        $a = 16 / 3;
-                    }
-                    if ((5 * $this->parameters['maximum_generation']) / 6 < $I[$generation] && $I[$generation] <= $this->parameters['maximum_generation']) {
-                        $a = 2 / 9;
-                    }
-                    $I[$generation + 1] = $I[$generation] + $a;
 
                     // dynamic_force_factor_weights
                     $friction_factor_weights = [
@@ -412,9 +421,9 @@ class Raoptimizer
                         'velocity' => $vel[$generation],
                         'c1' => $this->C1,
                         'c2' => $this->C2,
-                        'r1' => $r1,
-                        'r2' => $r2,
-                        'pbests' => $Pbest[$generation][$i]['friction_factors_weights']['A'],
+                        'r1' => $r1[$generation],
+                        'r2' => $r2[$generation],
+                        'pbests' => $SPbest[$generation][$i]['friction_factors_weights']['A'],
                         'positions' => $individu['friction_factors_weights']['A'],
                         'gbests' => $GBest[$generation]['friction_factors_weights']['A']
                     ];
@@ -424,9 +433,9 @@ class Raoptimizer
                         'velocity' => $vel[$generation],
                         'c1' => $this->C1,
                         'c2' => $this->C2,
-                        'r1' => $r1,
-                        'r2' => $r2,
-                        'pbests' => $Pbest[$generation][$i]['dynamic_force_factor_weights']['A'],
+                        'r1' => $r1[$generation],
+                        'r2' => $r2[$generation],
+                        'pbests' => $SPbest[$generation][$i]['dynamic_force_factor_weights']['A'],
                         'positions' => $individu['dynamic_force_factor_weights']['A'],
                         'gbests' => $GBest[$generation]['dynamic_force_factor_weights']['A']
                     ];
@@ -484,6 +493,44 @@ class Raoptimizer
                 }
                 $Pbest[$generation + 1] = $particles[$generation + 1];
                 $GBest[$generation + 1] = $this->minimalAE($particles[$generation + 1]);
+
+                //Fungsi SPbest
+                $CPbestIndex1 = array_rand($Pbest[$generation + 1]);
+                $CPbestIndex2 = array_rand($Pbest[$generation + 1]);
+                $CPbest1 = $Pbest[$generation + 1][$CPbestIndex1];
+                $CPbest2 = $Pbest[$generation + 1][$CPbestIndex2];
+
+                $counter = 0;
+                while ($counter < $this->max_counter) {
+                    if ($CPbestIndex1 == $CPbestIndex2) {
+                        $CPbestIndex1 = array_rand($Pbest[$generation + 1]);
+                        $CPbestIndex2 = array_rand($Pbest[$generation + 1]);
+                        $CPbest1 = $Pbest[$generation + 1][$CPbestIndex1];
+                        $CPbest2 = $Pbest[$generation + 1][$CPbestIndex2];
+                        $counter = 0;
+                    } else {
+                        break;
+                    }
+                }
+
+                if ($CPbestIndex1 != $CPbestIndex2) {
+                    if ($CPbest1['ae'] < $CPbest2['ae']) {
+                        $CPbest = $CPbest1;
+                    }
+                    if ($CPbest1['ae'] > $CPbest2['ae']) {
+                        $CPbest = $CPbest2;
+                    }
+                    if ($CPbest1['ae'] == $CPbest2['ae']) {
+                        $CPbest = $CPbest2;
+                    }
+                    //compared CPbest with all Pbest_i(t-1)
+                    foreach ($Pbest[$generation + 1] as $key => $val) {
+                        if ($CPbest['ae'] < $val['ae']) {
+                            $Pbest[$generation + 1][$key] = $CPbest;
+                        }
+                    }
+                }
+                $SPbest[$generation + 1] = $Pbest[$generation + 1];
             } ## End of if generation > 0
 
             ## Fitness evaluations
@@ -509,7 +556,7 @@ class Raoptimizer
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
         $end = [];
-
+        $ret = [];
         $data_set = $this->prepareDataset();
         for ($i = 0; $i <= $this->parameters['trials'] - 1; $i++) {
             foreach ($data_set as $key => $target_project) {
@@ -521,12 +568,12 @@ class Raoptimizer
                     }
                     $end[$i] = $start + ($this->parameters['particle_size'] - 1);
                     $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
-                    $results[] = $this->agile($target_project,$initial_populations);
+                    $results[] = $this->agile($target_project, $initial_populations);
                 }
             }
             $mae = Arithmatic::mae($results);
             $data = array($mae);
-            $fp = fopen('../results/zhang2021.txt', 'a');
+            $fp = fopen('../results/ardi2021.txt', 'a');
             fputcsv($fp, $data);
             fclose($fp);
             $ret[] = $mae;
@@ -564,7 +611,7 @@ function get_combinations($arrays)
 $combinations = get_combinations(
     array(
         'chaotic' => array('sinu'),
-        'particle_size' => array(10),
+        'particle_size' => array(10)
     )
 );
 

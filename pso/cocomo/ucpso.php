@@ -71,7 +71,6 @@ class MPUCWPSO
         $X1 = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
 
         foreach ($R as $key => $r) {
-
             $A = $X1 + floatval($r[0]) / $n * ($this->upper_bound - $this->lower_bound);
 
             if ($A > $this->upper_bound) {
@@ -84,6 +83,20 @@ class MPUCWPSO
             $ret[$key] = ['A' => $A];
         }
         return $ret;
+    }
+
+    function RIW($particle, $particles)
+    {
+        array_multisort(array_column($particles, 'ae'), SORT_ASC, $particles);
+        $rank = array_search($particle['ae'], array_column($particles, 'ae'));
+        $b = 1;
+        if ($rank <= ($this->swarm_size / 4)) {
+            $b = 2 / 3;
+        }
+        if ($rank >= (3 * $this->swarm_size) / 4) {
+            $b = 1.5;
+        }
+        return $b;
     }
 
     function velocity($parameters)
@@ -123,10 +136,11 @@ class MPUCWPSO
             $chaoticFactory = new ChaoticFactory();
             $chaos = $chaoticFactory->initializeChaotic($chaotic_type, $iterasi);
             $B = $this->randomzeroToOne();
+            $r1 = $this->randomZeroToOne();
+            $r2 = $this->randomZeroToOne();
+
             if ($iterasi == 0) {
-                $R1[$iterasi + 1] = $chaos->chaotic(0.7);
-                $R2[$iterasi + 1] = $chaos->chaotic(0.7);
-                $r[$iterasi + 1] = $chaos->chaotic(0.7);
+                $I[$iterasi + 1] = $iterasi;
                 $velocity[$iterasi + 1] = $this->randomzeroToOne();
 
                 ##Generate Population
@@ -145,68 +159,47 @@ class MPUCWPSO
                     ];
                 }
                 $Pbest[$iterasi + 1] = $particles[$iterasi + 1];
-
-                $min = min(array_column($Pbest[$iterasi + 1], 'ae'));
-                $index = array_search($min, $Pbest[$iterasi + 1]);
+                foreach ($Pbest[$iterasi + 1] as $pbest) {
+                    $pbests[] = $pbest['ae'];
+                }
+                $index = array_search(min($pbests), array_column($Pbest[$iterasi + 1], 'ae'));
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
-
-                //Fungsi SPbest
-                $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-
-                $counter = 0;
-                while ($counter < $max_counter) {
-                    if ($CPbestIndex1 == $CPbestIndex2) {
-                        $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                        $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-                        $counter = 0;
-                    } else {
-                        break;
-                    }
-                }
-
-                if ($CPbestIndex1 != $CPbestIndex2) {
-                    if ($CPbest1['ae'] < $CPbest2['ae']) {
-                        $CPbest = $CPbest1;
-                    }
-                    if ($CPbest1['ae'] > $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    if ($CPbest1['ae'] == $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    //compared CPbest with all Pbest_i(t-1)
-                    foreach ($Pbest[$iterasi + 1] as $key => $val) {
-                        if ($CPbest['ae'] < $val['ae']) {
-                            $Pbest[$iterasi + 1][$key] = $CPbest;
-                        }
-                    }
-                }
-                $SPbest[$iterasi + 1] = $Pbest[$iterasi + 1];
             } // End of iterasi==0
 
             if ($iterasi > 0) {
-                $R1[$iterasi + 1] = $chaos->chaotic($R1[$iterasi]);
-                $R2[$iterasi + 1] = $chaos->chaotic($R2[$iterasi]);
-
-                //Inertia weight
-                $r[$iterasi + 1] = $chaos->chaotic($r[$iterasi]);
-                $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
+                    //Inertia weight
+                    $w_ini = $this->INERTIA_MAX;
+                    $w_fin = $this->INERTIA_MIN;
+
+                    $chaos->I = $I[$iterasi];
+                    $cosine = $chaos->chaotic($max_iter);
+                    $w_cos = ((($w_ini + $w_fin) / 2) + (($w_ini - $w_fin) / 2)) * $cosine;
+
+                    $b = $this->RIW($particles[$iterasi][$i], $particles[$iterasi]);
+                    $w = $b * $w_cos;
+
+                    if (($I[$iterasi] <= $max_iter) / 6) {
+                        $a = 4 / 3;
+                    }
+                    if (($max_iter / 6) < $I[$iterasi] && $I[$iterasi] <= (5 * $max_iter) / 6) {
+                        $a = 16 / 3;
+                    }
+                    if ((5 * $max_iter) / 6 < $I[$iterasi] && $I[$iterasi] <= $max_iter) {
+                        $a = 2 / 9;
+                    }
+                    $I[$iterasi + 1] = $I[$iterasi] + $a;
+
                     $parameters = [
                         'w' => $w,
                         'velocity' => $velocity[$iterasi],
                         'c1' => $this->C1,
                         'c2' => $this->C2,
-                        'r1' => $R1[$iterasi],
-                        'r2' => $R2[$iterasi],
-                        'pbest' => $SPbest[$iterasi][$i]['A'],
+                        'r1' => $r1,
+                        'r2' => $r2,
+                        'pbest' => $Pbest[$iterasi][$i]['A'],
                         'position' => $particles[$iterasi][$i]['A'],
                         'gbest' => $GBest[$iterasi]['A']
                     ];
@@ -248,46 +241,6 @@ class MPUCWPSO
                 $index = array_search($min_ae, $Pbest[$iterasi + 1]);
 
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
-
-                //Fungsi SPbest
-                $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-
-                $counter = 0;
-                while ($counter < $max_counter) {
-                    if ($CPbestIndex1 == $CPbestIndex2) {
-                        $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                        $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-                        $counter = 0;
-                    } else {
-                        break;
-                    }
-                }
-
-                if ($CPbestIndex1 != $CPbestIndex2) {
-                    if ($CPbest1['ae'] < $CPbest2['ae']) {
-                        $CPbest = $CPbest1;
-                    }
-                    if ($CPbest1['ae'] > $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    if ($CPbest1['ae'] == $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    //compared CPbest with all Pbest_i(t-1)
-                    foreach ($SPbest[$iterasi] as $key => $val) {
-                        if ($CPbest['ae'] < $val['ae']) {
-                            $Pbest[$iterasi + 1][$key] = $CPbest;
-                        } else {
-                            $Pbest[$iterasi + 1][$key] = $val;
-                        }
-                    }
-                }
-                $SPbest[$iterasi + 1] = $Pbest[$iterasi + 1];
             } // End of iterasi > 0
 
             //Fitness value evaluation
@@ -382,92 +335,15 @@ class MPUCWPSO
             }
             $mae = Arithmatic::mae($results);
             $data = array($mae);
-            $fp = fopen('../results/ardi2021.txt', 'a');
+            $fp = fopen('../results/zhang2021.txt', 'a');
             fputcsv($fp, $data);
             fclose($fp);
             $ret[] = $mae;
+            $results = [];
         }
         return $ret;
     }
 }
-
-/**
- * Dataset 71 data point
- * Attribute (7): simple, average, complex, uaw, tcf, ecf, actual effort
- */
-$dataset = array(
-    array('simpleUC' => 6, 'averageUC' => 10, 'complexUC' => 15, 'uaw' => 9, 'tcf' => 0.81, 'ecf' => 0.84, 'actualEffort' => 7970),
-    array('simpleUC' => 4, 'averageUC' => 20, 'complexUC' => 15, 'uaw' => 8, 'tcf' => 0.99, 'ecf' => 0.99, 'actualEffort' => 7962),
-    array('simpleUC' => 1, 'averageUC' => 5, 'complexUC' => 20, 'uaw' => 9, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 7935),
-    array('simpleUC' => 5, 'averageUC' => 10, 'complexUC' => 15, 'uaw' => 8, 'tcf' => 0.9, 'ecf' => 0.91, 'actualEffort' => 7805),
-    array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 16, 'uaw' => 8, 'tcf' => 0.9, 'ecf' => 0.91, 'actualEffort' => 7758),
-    array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 14, 'uaw' => 8, 'tcf' => 0.99, 'ecf' => 0.99, 'actualEffort' => 7643),
-    array('simpleUC' => 3, 'averageUC' => 18, 'complexUC' => 15, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 7532),
-    array('simpleUC' => 0, 'averageUC' => 16, 'complexUC' => 12, 'uaw' => 8, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 7451),
-    array('simpleUC' => 2, 'averageUC' => 10, 'complexUC' => 15, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 7449),
-    array('simpleUC' => 4, 'averageUC' => 14, 'complexUC' => 17, 'uaw' => 7, 'tcf' => 1.025, 'ecf' => 0.98, 'actualEffort' => 7427),
-    array('simpleUC' => 5, 'averageUC' => 16, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.92, 'ecf' => 0.78, 'actualEffort' => 7406),
-    array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 15, 'uaw' => 8, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 7365),
-    array('simpleUC' => 9, 'averageUC' => 8, 'complexUC' => 19, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 7350),
-    array('simpleUC' => 5, 'averageUC' => 8, 'complexUC' => 20, 'uaw' => 7, 'tcf' => 1.02, 'ecf' => 1.085, 'actualEffort' => 7303),
-    array('simpleUC' => 2, 'averageUC' => 15, 'complexUC' => 11, 'uaw' => 8, 'tcf' => 1.095, 'ecf' => 0.95, 'actualEffort' => 7252),
-    array('simpleUC' => 1, 'averageUC' => 8, 'complexUC' => 16, 'uaw' => 8, 'tcf' => 0.92, 'ecf' => 0.78, 'actualEffort' => 7245),
-    array('simpleUC' => 2, 'averageUC' => 15, 'complexUC' => 16, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 7166),
-    array('simpleUC' => 5, 'averageUC' => 11, 'complexUC' => 17, 'uaw' => 7, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 7119),
-    array('simpleUC' => 3, 'averageUC' => 9, 'complexUC' => 14, 'uaw' => 8, 'tcf' => 0.92, 'ecf' => 0.78, 'actualEffort' => 7111),
-    array('simpleUC' => 2, 'averageUC' => 14, 'complexUC' => 11, 'uaw' => 8, 'tcf' => 1.05, 'ecf' => 0.95, 'actualEffort' => 7044),
-    array('simpleUC' => 5, 'averageUC' => 14, 'complexUC' => 15, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 7040),
-    array('simpleUC' => 3, 'averageUC' => 23, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 1.02, 'ecf' => 1.085, 'actualEffort' => 7028),
-    array('simpleUC' => 1, 'averageUC' => 16, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6942),
-    array('simpleUC' => 1, 'averageUC' => 15, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 6814),
-    array('simpleUC' => 2, 'averageUC' => 19, 'complexUC' => 12, 'uaw' => 9, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6809),
-    array('simpleUC' => 2, 'averageUC' => 20, 'complexUC' => 11, 'uaw' => 8, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 6802),
-    array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 11, 'uaw' => 12, 'tcf' => 0.78, 'ecf' => 0.51, 'actualEffort' => 6787),
-    array('simpleUC' => 1, 'averageUC' => 9, 'complexUC' => 14, 'uaw' => 7, 'tcf' => 1.08, 'ecf' => 0.77, 'actualEffort' => 6764),
-    array('simpleUC' => 4, 'averageUC' => 15, 'complexUC' => 14, 'uaw' => 7, 'tcf' => 1.05, 'ecf' => 0.95, 'actualEffort' => 6761),
-    array('simpleUC' => 0, 'averageUC' => 15, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 6725),
-    array('simpleUC' => 1, 'averageUC' => 16, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 1.02, 'ecf' => 1.085, 'actualEffort' => 6690),
-    array('simpleUC' => 0, 'averageUC' => 18, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 1.08, 'ecf' => 0.77, 'actualEffort' => 6600),
-    array('simpleUC' => 0, 'averageUC' => 17, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6474),
-    array('simpleUC' => 0, 'averageUC' => 13, 'complexUC' => 15, 'uaw' => 6, 'tcf' => 0.95, 'ecf' => 0.92, 'actualEffort' => 6433),
-    array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6416),
-    array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6412),
-    array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 6, 'tcf' => 0.9, 'ecf' => 0.94, 'actualEffort' => 6400),
-    array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 12, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 6360),
-    array('simpleUC' => 0, 'averageUC' => 13, 'complexUC' => 15, 'uaw' => 6, 'tcf' => 0.9, 'ecf' => 0.91, 'actualEffort' => 6337),
-    array('simpleUC' => 1, 'averageUC' => 20, 'complexUC' => 27, 'uaw' => 18, 'tcf' => 0.72, 'ecf' => 0.67, 'actualEffort' => 6240),
-    array('simpleUC' => 1, 'averageUC' => 11, 'complexUC' => 11, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.51, 'actualEffort' => 6232),
-    array('simpleUC' => 1, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6173),
-    array('simpleUC' => 0, 'averageUC' => 12, 'complexUC' => 15, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 6160),
-    array('simpleUC' => 2, 'averageUC' => 15, 'complexUC' => 12, 'uaw' => 6, 'tcf' => 1.095, 'ecf' => 0.95, 'actualEffort' => 6117),
-    array('simpleUC' => 2, 'averageUC' => 13, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 6062),
-    array('simpleUC' => 1, 'averageUC' => 27, 'complexUC' => 15, 'uaw' => 19, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6051),
-    array('simpleUC' => 3, 'averageUC' => 26, 'complexUC' => 15, 'uaw' => 18, 'tcf' => 0.72, 'ecf' => 0.67, 'actualEffort' => 6048),
-    array('simpleUC' => 2, 'averageUC' => 19, 'complexUC' => 20, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 6035),
-    array('simpleUC' => 1, 'averageUC' => 19, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 6024),
-    array('simpleUC' => 20, 'averageUC' => 25, 'complexUC' => 9, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.88, 'actualEffort' => 6023),
-    array('simpleUC' => 5, 'averageUC' => 25, 'complexUC' => 20, 'uaw' => 18, 'tcf' => 1.118, 'ecf' => 0.995, 'actualEffort' => 5993),
-    array('simpleUC' => 4, 'averageUC' => 16, 'complexUC' => 21, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.88, 'actualEffort' => 5985),
-    array('simpleUC' => 5, 'averageUC' => 21, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 5971),
-    array('simpleUC' => 5, 'averageUC' => 21, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.81, 'ecf' => 0.84, 'actualEffort' => 5962),
-    array('simpleUC' => 6, 'averageUC' => 16, 'complexUC' => 20, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5944),
-    array('simpleUC' => 5, 'averageUC' => 25, 'complexUC' => 20, 'uaw' => 17, 'tcf' => 0.85, 'ecf' => 0.88, 'actualEffort' => 5940),
-    array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 8, 'uaw' => 6, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 5927),
-    array('simpleUC' => 3, 'averageUC' => 18, 'complexUC' => 19, 'uaw' => 17, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5885),
-    array('simpleUC' => 5, 'averageUC' => 16, 'complexUC' => 20, 'uaw' => 18, 'tcf' => 1.08, 'ecf' => 0.77, 'actualEffort' => 5882),
-    array('simpleUC' => 1, 'averageUC' => 14, 'complexUC' => 12, 'uaw' => 6, 'tcf' => 0.72, 'ecf' => 0.67, 'actualEffort' => 5880),
-    array('simpleUC' => 3, 'averageUC' => 26, 'complexUC' => 14, 'uaw' => 18, 'tcf' => 0.82, 'ecf' => 0.79, 'actualEffort' => 5880),
-    array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 15, 'uaw' => 6, 'tcf' => 0.96, 'ecf' => 0.96, 'actualEffort' => 5876),
-    array('simpleUC' => 0, 'averageUC' => 3, 'complexUC' => 20, 'uaw' => 6, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5873),
-    array('simpleUC' => 3, 'averageUC' => 17, 'complexUC' => 20, 'uaw' => 18, 'tcf' => 1.095, 'ecf' => 0.95, 'actualEffort' => 5865),
-    array('simpleUC' => 2, 'averageUC' => 17, 'complexUC' => 20, 'uaw' => 18, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 5863),
-    array('simpleUC' => 3, 'averageUC' => 21, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 5856),
-    array('simpleUC' => 2, 'averageUC' => 18, 'complexUC' => 18, 'uaw' => 18, 'tcf' => 1.05, 'ecf' => 0.95, 'actualEffort' => 5800),
-    array('simpleUC' => 1, 'averageUC' => 23, 'complexUC' => 22, 'uaw' => 17, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 5791),
-    array('simpleUC' => 5, 'averageUC' => 30, 'complexUC' => 10, 'uaw' => 19, 'tcf' => 0.95, 'ecf' => 0.92, 'actualEffort' => 5782),
-    array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
-    array('simpleUC' => 5, 'averageUC' => 18, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5775)
-);
 
 $scales = array(
     "prec" => array("vl" => 6.2, "l" => 4.96, "n" => 3.72, "h" => 2.48, "vh" => 1.24, "eh" => 0),
@@ -511,8 +387,8 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'chaotic' => array('sinu'),
-        'particle_size' => array(100)
+        'chaotic' => array('cosine'),
+        'particle_size' => array(70),
     )
 );
 

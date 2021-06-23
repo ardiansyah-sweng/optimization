@@ -1,8 +1,32 @@
 <?php
+set_time_limit(1000000);
 
-class Random
+class RandomSeedsGenerator
 {
-    public static function weight($ranges)
+    public $sizeOfPopulation;
+    public $numberOfRandomSeeds;
+    public $rangeOfPositions = [
+        'ff' => [
+            'team_composition' => 0.91,
+            'process' => 0.89,
+            'environmental_factors' => 0.96,
+            'team_dynamics' => 0.85
+        ],
+        'dff' => [
+            'expected_team_change' => 0.91,
+            'introduction_new_tools' => 0.96,
+            'vendor_defect' => 0.90,
+            'team_member_responsibility' => 0.98,
+            'personal_issue' => 0.98,
+            'expected_delay' => 0.96,
+            'expected_ambiguity' => 0.95,
+            'expected_change' => 0.97,
+            'expected_relocation' => 0.98,
+        ],
+        'max' => 1
+    ];
+
+    public static function generateRandomParticle($ranges)
     {
         $ff_team_composition = mt_rand($ranges['ff']['team_composition'] * 100, $ranges['max']  * 100) / 100;
         $ff_process = mt_rand($ranges['ff']['process'] * 100, $ranges['max']  * 100) / 100;
@@ -35,43 +59,53 @@ class Random
             'dff_expected_relocation' => $dff_expected_relocation
         ];
     }
-}
 
-$population_size = 100;
-$random_seeds = 30;
+    public function saveRandomParticle()
+    {
+        $randomSeeds = [];
+        for ($j = 0; $j <= $this->sizeOfPopulation - 1; $j++) {
+            $randomSeeds[] = $this->generateRandomParticle($this->rangeOfPositions);
+        }
+        return $randomSeeds;
+    }
 
-$ranges = [
-    'ff' => [
-        'team_composition' => 0.91,
-        'process' => 0.89,
-        'environmental_factors' => 0.96,
-        'team_dynamics' => 0.85
-    ],
-    'dff' => [
-        'expected_team_change' => 0.91,
-        'introduction_new_tools' => 0.96,
-        'vendor_defect' => 0.90,
-        'team_member_responsibility' => 0.98,
-        'personal_issue' => 0.98,
-        'expected_delay' => 0.96,
-        'expected_ambiguity' => 0.95,
-        'expected_change' => 0.97,
-        'expected_relocation' => 0.98,
-    ],
-    'max' => 1
-];
-
-$positions = [];
-for ($i = 0; $i <= $random_seeds - 1; $i++) {
-    for ($j = 0; $j <= $population_size - 1; $j++) {
-        $positions[] = Random::weight($ranges);
+    public function writeToTXTFile()
+    {
+        $randomSeeds = $this->saveRandomParticle();
+        foreach ($randomSeeds as $position) {
+            $data = array($position['ff_team_composition'], $position['ff_process'], $position['ff_environmental_factors'], $position['ff_team_dynamics'], $position['dff_expected_team_change'], $position['dff_introduction_new_tools'], $position['dff_vendor_defect'], $position['dff_team_member_responsibility'], $position['dff_personal_issue'], $position['dff_expected_delay'], $position['dff_expected_ambiguity'], $position['dff_expected_change'], $position['dff_expected_relocation']);
+            $fp = fopen('seeds_spso_cpso_master.txt', 'a');
+            fputcsv($fp, $data);
+            fclose($fp);
+        }
     }
 }
-print_r($positions);
 
-foreach ($positions as $position) {
-    $data = array($position['ff_team_composition'], $position['ff_process'], $position['ff_environmental_factors'], $position['ff_team_dynamics'], $position['dff_expected_team_change'], $position['dff_introduction_new_tools'], $position['dff_vendor_defect'], $position['dff_team_member_responsibility'], $position['dff_personal_issue'], $position['dff_expected_delay'], $position['dff_expected_ambiguity'], $position['dff_expected_change'], $position['dff_expected_relocation']);
-    $fp = fopen('seeds.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
+class RandomSeedsExecutor
+{
+    public $sizeOfPopulation;
+    public $maximumSizeOfPopulation;
+
+    public function main()
+    {
+        $recordOfParticles = [];
+        $collectionOfParticles = [];
+        for ($i = 0; $i <= ($this->maximumSizeOfPopulation/$this->sizeOfPopulation)-1; $i++) {
+            $randomSeedsGenerator = new RandomSeedsGenerator;
+            $randomSeedsGenerator->sizeOfPopulation = $this->sizeOfPopulation;
+            $recordOfParticles[] = $randomSeedsGenerator->saveRandomParticle();
+            $randomSeedsGenerator->writeToTXTFile();
+            $collectionOfParticles[] = $recordOfParticles;
+        }
+        print_r($recordOfParticles);
+        return $collectionOfParticles;
+    }
 }
+
+$randomSeedsExecutor = new RandomSeedsExecutor;
+$sizeOfPopulation = $randomSeedsExecutor->sizeOfPopulation = 10;
+$maximumSizeOfPopulation = $randomSeedsExecutor->maximumSizeOfPopulation = 2500;
+$collectionOfParticles = $randomSeedsExecutor->main();
+
+
+// file_put_contents("seeds_spso_cpso.txt", "");

@@ -397,13 +397,13 @@ $combinations = get_combinations(
     array(
         //'particle_size' => array(10),
         'chaotic' => array('cosine'),
-        'particle_size' => array(100),
+        'particle_size' => array(40),
         //'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
 );
 
 foreach ($combinations as $key => $combination) {
-    for ($i = 0; $i <= 13 - 1; $i++) {
+    for ($i = 0; $i <=  - 1; $i++) {
         $MAX_ITER = 40;
         $MAX_TRIAL = 1000;
         $numDataset = count($dataset);

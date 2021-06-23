@@ -2,7 +2,6 @@
 set_time_limit(1000000);
 include 'raw_data_interface.php';
 include 'data_preprocessing.php';
-include 'chaotic_interface.php';
 include 'seeds_class.php';
 
 class ParticleSwarmOptimizer
@@ -20,7 +19,9 @@ class ParticleSwarmOptimizer
     protected $MAX_COUNTER;
     protected $lower_bound = 0.01;
     protected $upper_bound = 5;
+    private $AVOIDED_RANDOM_VALUE = array(0.00, 0.25, 0.50, 0.75, 1.00);
     private $trials;
+    private $data_size = 93;
 
     function __construct($swarm_size, $C1, $C2, $max_iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $max_counter, $trials, $scales)
     {
@@ -72,6 +73,42 @@ class ParticleSwarmOptimizer
         return (float) rand() / (float) getrandmax();
     }
 
+    /**
+     * Generate random Simple Use Case Complexity weight parameter
+     * Min = 5,     xMinSimple = 4.5
+     * Max = 7.49   xMaxSimple = 8.239
+     */
+    function randomSimpleUCWeight()
+    {
+        $MIN = 5;
+        $MAX = 7.49;
+        return mt_rand($MIN * 100, $MAX * 100) / 100;
+    }
+
+    /**
+     * Generate random Average Use Case Complexity weight parameter
+     * Min = 7.5    xMinAverage = 6.75
+     * Max = 12.49  xMaxAverage = 13.739
+     */
+    function randomAverageUCWeight()
+    {
+        $MIN = 7.5;
+        $MAX = 12.49;
+        return mt_rand($MIN * 100, $MAX * 100) / 100;
+    }
+
+    /**
+     * Generate random Complex Use Case Complexity weight parameter
+     * Min = 12.5   xMinComplex = 11.25
+     * Max = 15     xMaxComplex = 16.5
+     */
+    function randomComplexUCWeight()
+    {
+        $MIN = 12.5;
+        $MAX = 15;
+        return mt_rand($MIN * 100, $MAX * 100) / 100;
+    }
+
     function minimalAE($particles)
     {
         foreach ($particles as $val) {
@@ -88,20 +125,143 @@ class ParticleSwarmOptimizer
         return $particles[array_search(max($ae), $ae)];
     }
 
+    function size($xSimple, $simpleUC, $xAverage, $averageUC, $xComplex, $complexUC, $uaw, $tcf, $ecf)
+    {
+        $ucSimple = $xSimple * $simpleUC;
+        $ucAverage = $xAverage * $averageUC;
+        $ucComplex = $xComplex * $complexUC;
+
+        $UUCW = $ucSimple + $ucAverage + $ucComplex;
+        $UUCP = $uaw + $UUCW;
+        return $UUCP * $tcf * $ecf;
+    }
+
     function velocity($inertia, $R1, $R2, $velocity, $position, $Pbest, $Gbest)
     {
-        return $inertia * $velocity + ($this->C1 * $R1) * (floatval($Pbest) - floatval($position)) + ($this->C2 * $R2) * (floatval($Gbest) - floatval($position));
+        return floatval($inertia) * floatval($velocity) + ($this->C1 * $R1) * (floatval($Pbest) - floatval($position)) + ($this->C2 * $R2) * (floatval($Gbest) - floatval($position));
     }
 
 
     function comparePbests($Pbests, $particles)
     {
         foreach ($Pbests as $key => $pbest) {
-            if ($pbest['ae'] > $particles[$key]['ae']) {    
+            if ($pbest['ae'] > $particles[$key]['ae']) {
                 $Pbests[$key] = $particles[$key];
             }
         }
         return $Pbests;
+    }
+
+    function SPbest($Pbests)
+    {
+        $CPbest1_index = array_rand($Pbests);
+        $CPbest2_index = array_rand($Pbests);
+        $CPbest1 = $Pbests[$CPbest1_index];
+        $CPbest2 = $Pbests[$CPbest2_index];
+        $counter = 0;
+        while ($counter < $this->MAX_COUNTER) {
+            if ($CPbest1_index == $CPbest2_index) {
+                $CPbest1_index = array_rand($Pbests);
+                $CPbest2_index = array_rand($Pbests);
+                $CPbest1 = $Pbests[$CPbest1_index];
+                $CPbest2 = $Pbests[$CPbest2_index];
+                $counter = 0;
+            } else {
+                break;
+            }
+        }
+        if ($CPbest1_index != $CPbest2_index) {
+            if ($CPbest1['ae'] < $CPbest2['ae']) {
+                $CPbest = $CPbest1;
+            }
+            if ($CPbest1['ae'] > $CPbest2['ae']) {
+                $CPbest = $CPbest2;
+            }
+            if ($CPbest1['ae'] == $CPbest2['ae']) {
+                $CPbest = $CPbest2;
+            }
+            //compared CPbest with all Pbest_i(t-1)
+            foreach ($Pbests as $key => $pbest) {
+                if ($CPbest['ae'] < $pbest['ae']) {
+                    $SPbests[$key] = $CPbest;
+                }
+                if ($CPbest['ae'] > $pbest['ae']) {
+                    $SPbests[$key] = $pbest;
+                }
+                if ($CPbest['ae'] == $pbest['ae']) {
+                    $SPbests[$key] = $pbest;
+                }
+            }
+        }
+        return $SPbests;
+    }
+
+    function randomNumber($r0)
+    {
+        $i = 0;
+        while ($i < count($this->AVOIDED_RANDOM_VALUE)) {
+            if ($this->AVOIDED_RANDOM_VALUE[$i] == $r0) {
+                $r0 = number_format($this->randomZeroToOne(), 2);
+                $i = 0;
+            }
+            if ($this->AVOIDED_RANDOM_VALUE[$i] != $r0) {
+                $i++;
+            }
+        }
+        return $r0;
+    }
+
+    function logistic($chaos_value)
+    {
+        $r0 = $this->randomNumber(number_format($chaos_value, 2));
+        return (4 * $r0) * (1 - $r0);
+    }
+
+    function getMbest($mbests)
+    {
+        foreach ($mbests as $mbest) {
+            foreach ($mbest as $position) {
+                $A[] = $position['A'];
+            }
+        }
+        $ret['A'] = array_sum($A) / $this->data_size;
+        return $ret;
+    }
+
+    function positionUpdating($particles)
+    {
+        $mean = array_sum(array_column($particles, 'ae')) / $this->data_size;
+        foreach ($particles as $particle) {
+            $p = exp($particle['ae']) / $mean;
+            if ($p > $this->randomZeroToOne()) {
+                return 'new';
+            }
+            return 'old';
+        }
+    }
+
+    function Nbest($Gbests, $Pbests)
+    {
+        $pbest1_index = array_rand($Pbests);
+        $pbest2_index = array_rand($Pbests);
+
+        if ($pbest1_index == $pbest2_index) {
+            $counter = 0;
+            while ($counter < $this->MAX_COUNTER) {
+                if ($pbest1_index == $pbest2_index) {
+                    $pbest1_index = array_rand($Pbests);
+                    $pbest2_index = array_rand($Pbests);
+                    $pbest1 = $Pbests[$pbest1_index];
+                    $pbest2 = $Pbests[$pbest2_index];
+                    $counter = 0;
+                } else {
+                    break;
+                }
+            }
+        }
+        $pbest1 = $Pbests[$pbest1_index];
+        $pbest2 = $Pbests[$pbest2_index];
+        return $Gbests['ae'] + ($pbest1['ae'] - $pbest2['ae']);
     }
 
     function findSolution($project, $initial_populations)
@@ -129,24 +289,31 @@ class ParticleSwarmOptimizer
         $EM['site'] = $project['site'];
         $EM['sced'] = $project['sced'];
 
-        $Gbests = [];
+        $arrLimit = array(
+            'xSimple' => array('xSimpleMin' => 5, 'xSimpleMax' => 7.49),
+            'xAverage' => array('xAverageMin' => 7.5, 'xAverageMax' => 12.49),
+            'xComplex' => array('xComplexMin' => 12.5, 'xComplexMax' => 15)
+        );
+
         for ($iteration = 0; $iteration <= $this->max_iteration - 1; $iteration++) {
-            $inertia[$iteration + 1]  = $this->min_inertia - ((($this->max_inertia - $this->min_inertia) * $iteration) / $this->max_iteration);
-            $chaoticFactory = new ChaoticFactory();
-            $chaos1 = $chaoticFactory->initializeChaotic('singer', $iteration);
-            $chaos2 = $chaoticFactory->initializeChaotic('sine', $iteration);
+            $R1  = $this->randomZeroToOne();
+            $R2  = $this->randomZeroToOne();
 
             ## Generate population
             if ($iteration === 0) {
-                $R1[$iteration + 1] = $chaos1->chaotic($this->randomzeroToOne());
-                $R2[$iteration + 1] = $chaos2->chaotic($this->randomzeroToOne());
+                $chaos_initial = $this->logistic($this->randomZeroToOne());
+                $chaos_value[$iteration + 1] = $chaos_initial;
+                $inertia[$iteration + 1] = $chaos_initial * $this->min_inertia + (($this->max_inertia - $this->min_inertia) * $iteration / $this->max_iteration);
 
-                foreach ($initial_populations as $i => $initial_population) {
-                    $B = $this->randomzeroToOne();
-                    $E = $this->scaleEffortExponent($B, $SF); ## chaotic
-                    $estimated_effort = $this->estimating($initial_population['A'], $project['kloc'], $E, $EM);
-                    $particles[$iteration + 1][$i]['A'] = $initial_population['A'];
-                    $particles[$iteration + 1][$i]['B'] = $B;
+                for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
+                    $A = $initial_populations[$i]['A'];
+                    $B[$iteration + 1] = $this->logistic($this->randomzeroToOne());
+                    $E = $this->scaleEffortExponent($B[$iteration + 1], $SF); ## chaotic
+
+                    $estimated_effort = $this->estimating($A, $project['kloc'], $E, $EM);
+
+                    $particles[$iteration + 1][$i]['A'] = $A;
+                    $particles[$iteration + 1][$i]['B'] = $B[$iteration + 1]; ## chaotic
                     $particles[$iteration + 1][$i]['E'] = $E;
                     $particles[$iteration + 1][$i]['EM'] = array_sum($EM);
                     $particles[$iteration + 1][$i]['SF'] = array_sum($SF);
@@ -155,22 +322,44 @@ class ParticleSwarmOptimizer
                     $particles[$iteration + 1][$i]['estimatedEffort'] = $estimated_effort;
                     $particles[$iteration + 1][$i]['ae'] = abs($estimated_effort - $project['effort']);
                 }
+
                 $Pbests[$iteration + 1] = $particles[$iteration + 1];
+                $SPbests[$iteration + 1] = $this->SPbest($particles[$iteration + 1]);
+
+                $mbests[] = $particles[$iteration + 1];
+                $Mbests[$iteration + 1] = $this->getMbest($mbests);
                 $Gbest[$iteration + 1] = $this->minimalAE($Pbests[$iteration + 1]);
+                $Gworsts[$iteration + 1] = $this->maximalAE($Pbests[$iteration + 1]);
+                $Nbests[$iteration + 1] = $this->Nbest($Gbest[$iteration + 1], $Pbests[$iteration + 1]);
+
+                if ($Nbests[$iteration + 1] < $Gworsts[$iteration + 1]['ae']) {
+                    $Gworst = $Nbests[$iteration + 1];
+                } else {
+                    $Gworst = $Gworsts[$iteration + 1];
+                }
             } ## End Generate Population
 
             if ($iteration > 0) {
-                $R1[$iteration + 1] = $chaos1->chaotic($R1[$iteration]);
-                $R2[$iteration + 1] = $chaos2->chaotic($R2[$iteration]);
+                $chaos_value[$iteration + 1] = $this->logistic($chaos_value[$iteration]);
+                $inertia[$iteration + 1] = $chaos_value[$iteration] * $this->min_inertia + (($this->max_inertia - $this->min_inertia) * $iteration / $this->max_iteration);
+                $B[$iteration + 1] = $this->logistic($B[$iteration]);
 
                 for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
                     $GbestA = $Gbest[$iteration]['A'];
-                    $PbestsA = $Pbests[$iteration][$i]['A'];
+                    $MbestA = $Mbests[$iteration]['A'];
+                    $SPbestsA = $SPbests[$iteration][$i]['A'];
                     $velocity = $particles[$iteration][$i]['A'];
                     $A = $particles[$iteration][$i]['A'];
 
-                    $velocity = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $velocity, $A, $PbestsA, $GbestA);
-                    $A = floatval($A) + $velocity;
+                    $velocity = $this->velocity($inertia[$iteration], $R1, $R2, $velocity, $A, $SPbestsA, $MbestA);
+
+                    if ($this->positionUpdating($particles[$iteration]) == 'new') {
+                        $A = $chaos_value[$iteration] * floatval($A) + (1 - $chaos_value[$iteration]) * $velocity + floatval($GbestA);
+                    }
+                    if ($this->positionUpdating($particles[$iteration]) == 'old') {
+                        $A = floatval($A) + $velocity;
+                    }
+
                     if ($A < $this->lower_bound) {
                         $A = $this->lower_bound;
                     }
@@ -178,12 +367,12 @@ class ParticleSwarmOptimizer
                         $A = $this->upper_bound;
                     }
 
-                    $E = $this->scaleEffortExponent($B, $SF); ## chaotic
+                    $E = $this->scaleEffortExponent($B[$iteration + 1], $SF); ## chaotic
 
                     $estimated_effort = $this->estimating($A, $project['kloc'], $E, $EM);
 
                     $particles[$iteration + 1][$i]['A'] = $A;
-                    $particles[$iteration + 1][$i]['B'] = $B; ## chaotic
+                    $particles[$iteration + 1][$i]['B'] = $B[$iteration + 1]; ## chaotic
                     $particles[$iteration + 1][$i]['E'] = $E;
                     $particles[$iteration + 1][$i]['EM'] = array_sum($EM);
                     $particles[$iteration + 1][$i]['SF'] = array_sum($SF);
@@ -193,12 +382,23 @@ class ParticleSwarmOptimizer
                     $particles[$iteration + 1][$i]['ae'] = abs($estimated_effort - $project['effort']);
                 }
                 $Pbests[$iteration + 1] = $this->comparePbests($Pbests[$iteration], $particles[$iteration + 1]);
-                $Gbest[$iteration + 1] = $this->minimalAE($Pbests[$iteration + 1]);
-                if ($Gbest[$iteration + 1] < $this->stopping_value) {
-                    return $Gbest[$iteration + 1];
+                $SPbests[$iteration + 1] = $this->SPbest($Pbests[$iteration + 1]);
+                $mbests[] = $Pbests[$iteration + 1];
+                $Mbests[$iteration + 1] = $this->getMbest($mbests);
+                $Gbest[$iteration + 1] = $this->minimalAE($SPbests[$iteration + 1]);
+                $Gworsts[$iteration + 1] = $this->maximalAE($Pbests[$iteration + 1]);
+                $Nbests[$iteration + 1] = $this->Nbest($Gbest[$iteration + 1], $Pbests[$iteration + 1]);
+
+                if ($Nbests[$iteration + 1] < $Gworsts[$iteration + 1]['ae']) {
+                    $Gworst = $Nbests[$iteration + 1];
+                } else {
+                    $Gworst = $Gworsts[$iteration + 1];
                 }
-                $Gbests[] = $Gbest[$iteration + 1];
             } ## End IF iteration > 0
+            if ($Gworst < $this->stopping_value) {
+                return $Gworsts[$iteration + 1];
+            }
+            $Gbests[] = $Gworsts[$iteration + 1];
         } ## End of iteration
 
         $minimal_AE = min(array_column($Gbests, 'ae'));
@@ -282,14 +482,12 @@ class ParticleSwarmOptimizer
             }
             $mae = Arithmatic::mae($results);
             $data = array($mae);
-            $fp = fopen('../results/tharwat.txt', 'a');
+            $fp = fopen('../results/liu.txt', 'a');
             fputcsv($fp, $data);
             fclose($fp);
             $ret[] = $mae;
             $results = [];
-            $end = [];
         }
-
         return $ret;
     }
 }
@@ -334,15 +532,15 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'particle_size' => array(100)
+        'particle_size' => array(10)
     )
 );
 
 foreach ($combinations as $key => $combination) {
     $dataset = 'cocomo_nasa93.txt';
     $swarm_size = $combination['particle_size'];
-    $C1 = 1.5;
-    $C2 = 1.5;
+    $C1 = 2;
+    $C2 = 2;
     $MAX_ITERATION = 40;
     $max_inertia = 0.9;
     $min_inertia = 0.4;

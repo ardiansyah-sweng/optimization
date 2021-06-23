@@ -166,7 +166,7 @@ class Raoptimizer
         return $ret;
     }
 
-    function uniformInitializationFF()
+    function uniformInitializationFF($R)
     {
         $n = $this->parameters['particle_size'];
 
