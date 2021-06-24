@@ -315,13 +315,13 @@ class Raoptimizer
                 }
             }
             $mae = Arithmatic::mae($results);
-
-            $data = array($numberOfRandomSeeds, $mae);
-            $fp = fopen('../results/psorigin.txt', 'a');
-            fputcsv($fp, $data);
-            fclose($fp);
+            //$data = array($numberOfRandomSeeds, $mae);
+            // $fp = fopen('../results/psorigin.txt', 'a');
+            // fputcsv($fp, $data);
+            // fclose($fp);
             $ret[] = $mae;
         }
+        
         return $ret;
     }
 } ## End of Raoptimizer
@@ -352,6 +352,7 @@ function get_combinations($arrays)
     return $result;
 }
 
+$maes = [];
 for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
     $combinations = get_combinations(
         array(
@@ -395,9 +396,18 @@ for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSee
 
         $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
         $optimized = $optimize->processingDataset($numberOfRandomSeeds);
-        echo 'Random seeds: '. $numberOfRandomSeeds;
-        echo ' '; 
-        echo $optimized[0];
-        echo '<br>';
+        // echo 'Random seeds: '. $numberOfRandomSeeds;
+        // echo ' '; 
+        // echo $optimized[0];
+        // echo '<br>';
+        $maes[] = (string)$optimized[0];
     }
 }
+$countAllMAE = array_count_values($maes);
+print_r($countAllMAE);
+echo '<p>';
+$maxStagnantValue = max($countAllMAE);
+$indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+echo $maxStagnantValue;
+echo '<br>';
+echo $indexMaxStagnantValue;

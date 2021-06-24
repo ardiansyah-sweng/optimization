@@ -356,17 +356,17 @@ class Raoptimizer
                     $dynamic_force_factor_weights = $this->split($initial_populations[$i])['dff'];
 
                     $labelsFF = ['ff_team_composition', 'ff_process', 'ff_environmental_factors', 'ff_team_dynamics'];
-                    $labelsDFF = ['dff_expected_team_change', 'dff_introduction_new_tools', 'dff_vendor_defect', 'dff_team_member_responsibility','dff_personal_issue', 'dff_expected_delay', 'dff_expected_ambiguity', 'dff_expected_change', 'dff_expected_relocation'];
-                    foreach($labelsFF as $key => $label){
+                    $labelsDFF = ['dff_expected_team_change', 'dff_introduction_new_tools', 'dff_vendor_defect', 'dff_team_member_responsibility', 'dff_personal_issue', 'dff_expected_delay', 'dff_expected_ambiguity', 'dff_expected_change', 'dff_expected_relocation'];
+                    foreach ($labelsFF as $key => $label) {
                         $friction_factor_weights[$label] = $friction_factor_weights[$key];
                         unset($friction_factor_weights[$key]);
                     }
 
-                    foreach($labelsDFF as $key => $label){
+                    foreach ($labelsDFF as $key => $label) {
                         $dynamic_force_factor_weights[$label] = $dynamic_force_factor_weights[$key];
                         unset($dynamic_force_factor_weights[$key]);
                     }
-                    print_r($friction_factor_weights);exit();
+
                     $friction_factor = $this->products($friction_factor_weights);
                     $dynamic_force_factor = $this->products($dynamic_force_factor_weights);
                     $deceleration = $this->deceleration($friction_factor, $dynamic_force_factor);
@@ -500,36 +500,29 @@ class Raoptimizer
         return $Gbests[$index];
     }
 
-    function processingDataset()
+    function processingDataset($numberOfRandomSeeds, $file_name)
     {
         $datasets = [
-            'filename' => 'seeds.txt',
+            'filename' => $file_name,
             'index' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
             'name' => ['ff_team_composition', 'ff_process', 'ff_environmental_factors', 'ff_team_dynamics', 'dff_expected_team_change', 'dff_introduction_new_tools', 'dff_vendor_defect', 'dff_team_member_responsibility', 'dff_personal_issue', 'dff_expected_delay', 'dff_expected_ambiguity', 'dff_expected_change', 'dff_expected_relocation']
         ];
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
         $end = [];
+        $ret = [];
 
         $data_set = $this->prepareDataset();
         for ($i = 0; $i <= $this->parameters['trials'] - 1; $i++) {
             foreach ($data_set as $key => $target_project) {
                 if ($key >= 0) {
-                    if ($i === 0) {
-                        $start = 0;
-                    } else {
-                        $start = $end[$i - 1] + 1;
-                    }
-                    $end[$i] = $start + ($this->parameters['particle_size'] - 1);
-                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $start = 0;
+                    $end = $numberOfRandomSeeds - 1;
+                    $initial_populations = Dataset::provide($seeds, $start, $end);
                     $results[] = $this->agile($target_project, $initial_populations);
                 }
             }
             $mae = Arithmatic::mae($results);
-            $data = array($mae);
-            $fp = fopen('../results/liu.txt', 'a');
-            fputcsv($fp, $data);
-            fclose($fp);
             $ret[] = $mae;
         }
         return $ret;
@@ -562,47 +555,99 @@ function get_combinations($arrays)
     return $result;
 }
 
-$combinations = get_combinations(
-    array(
-        // 'chaotic' => array('logistic'),
-        'particle_size' => array(30),
-    )
-);
+$maes = [];
+$fileNames = [
+    'seeds_mpso0.txt',
+    // 'seeds_mpso1.txt',
+    // 'seeds_mpso2.txt',
+    // 'seeds_mpso3.txt',
+    // 'seeds_mpso4.txt',
+    // 'seeds_mpso5.txt',
+    // 'seeds_mpso6.txt',
+    // 'seeds_mpso7.txt',
+    // 'seeds_mpso8.txt',
+    // 'seeds_mpso9.txt',
+    // 'seeds_mpso10.txt',
+    // 'seeds_mpso11.txt',
+    // 'seeds_mpso12.txt',
+    // 'seeds_mpso13.txt',
+    // 'seeds_mpso14.txt',
+    // 'seeds_mpso15.txt',
+    // 'seeds_mpso16.txt',
+    // 'seeds_mpso17.txt',
+    // 'seeds_mpso18.txt',
+    // 'seeds_mpso19.txt',
+    // 'seeds_mpso20.txt',
+    // 'seeds_mpso21.txt',
+    // 'seeds_mpso22.txt',
+    // 'seeds_mpso23.txt',
+    // 'seeds_mpso24.txt',
+    // 'seeds_mpso25.txt',
+    // 'seeds_mpso26.txt',
+    // 'seeds_mpso27.txt',
+    // 'seeds_mpso28.txt',
+    // 'seeds_mpso29.txt',
+];
 
-foreach ($combinations as $key => $combination) {
-    $particle_size = $combination['particle_size'];
-    $maximum_generation = 40;
-    $trials = 30;
-    $fitness = 0.1;
-    $friction_factors = [
-        'ff_team_composition' => 0.91,
-        'ff_process' => 0.89,
-        'ff_environmental_factors' => 0.96,
-        'ff_team_dynamics' => 0.85,
-        'max' => 1
-    ];
-    $dynamic_force_factors = [
-        'dff_expected_team_change' => 0.91,
-        'dff_introduction_new_tools' => 0.96,
-        'dff_vendor_defect' => 0.90,
-        'dff_team_member_responsibility' => 0.98,
-        'dff_personal_issue' => 0.98,
-        'dff_expected_delay' => 0.96,
-        'dff_expected_ambiguity' => 0.95,
-        'dff_expected_change' => 0.97,
-        'dff_expected_relocation' => 0.98,
-        'max' => 1
-    ];
-    $parameters = [
-        'particle_size' => $particle_size,
-        'maximum_generation' => $maximum_generation,
-        'trials' => $trials,
-        'fitness' => $fitness,
-        'friction_factors' => $friction_factors,
-        'dynamic_force_factors' => $dynamic_force_factors
-    ];
+foreach ($fileNames as $file_name) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 10000; $numberOfRandomSeeds += 10) {
+        $combinations = get_combinations(
+            array(
+                // 'chaotic' => array('logistic'),
+                'particle_size' => array($numberOfRandomSeeds),
+            )
+        );
 
-    $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
-    $optimized = $optimize->processingDataset();
-    print_r($optimized);
+        foreach ($combinations as $key => $combination) {
+            $particle_size = $combination['particle_size'];
+            $maximum_generation = 40;
+            $trials = 1;
+            $fitness = 0.1;
+            $friction_factors = [
+                'ff_team_composition' => 0.91,
+                'ff_process' => 0.89,
+                'ff_environmental_factors' => 0.96,
+                'ff_team_dynamics' => 0.85,
+                'max' => 1
+            ];
+            $dynamic_force_factors = [
+                'dff_expected_team_change' => 0.91,
+                'dff_introduction_new_tools' => 0.96,
+                'dff_vendor_defect' => 0.90,
+                'dff_team_member_responsibility' => 0.98,
+                'dff_personal_issue' => 0.98,
+                'dff_expected_delay' => 0.96,
+                'dff_expected_ambiguity' => 0.95,
+                'dff_expected_change' => 0.97,
+                'dff_expected_relocation' => 0.98,
+                'max' => 1
+            ];
+            $parameters = [
+                'particle_size' => $particle_size,
+                'maximum_generation' => $maximum_generation,
+                'trials' => $trials,
+                'fitness' => $fitness,
+                'friction_factors' => $friction_factors,
+                'dynamic_force_factors' => $dynamic_force_factors
+            ];
+
+            $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
+            $optimized = $optimize->processingDataset($numberOfRandomSeeds, $file_name);
+            $maes[] = (string)$optimized[0];
+        }
+    }
+    $countAllMAE = array_count_values($maes);
+    print_r($countAllMAE);
+    echo '<p>';
+    $maxStagnantValue = max($countAllMAE);
+    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+    echo $maxStagnantValue;
+    echo '<br>';
+    echo $indexMaxStagnantValue;
+
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $fp = fopen('../results/liu.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $maes = [];
 }

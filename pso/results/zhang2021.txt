@@ -1170,7 +1170,6 @@ Evaluation on Agile function, p=10, seeds = 30
 1.9714138974354
 1.9843147119048
 
-
 1015.8696210144
 1016.1867348305
 1016.0309788337
@@ -1201,3 +1200,6 @@ Evaluation on Agile function, p=10, seeds = 30
 1015.4630195668
 1015.4522587253
 1015.5267557141
+
+Evaluation on Agile function, p = 10 - 2500, seeds = 30
+

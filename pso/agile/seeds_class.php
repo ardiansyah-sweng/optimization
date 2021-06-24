@@ -35,6 +35,7 @@ class Dataset
 {
     public static function provide($seeds, $start, $end)
     {
+        $ret = [];
         foreach ($seeds as $key => $dataset) {
             if ($key >= $start && $key <= $end) {
                 $ret[] = $dataset;
