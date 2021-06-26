@@ -590,3 +590,5 @@ Evaluation on COCOMO function, p = 10 - 2500, seeds = 30
 20,79
 20,78
 21,79
+22,79
+26,79

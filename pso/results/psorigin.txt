@@ -276,7 +276,7 @@ Evaluation on COCOMo function, p=60, seeds = 30
 115.62103714861
 286.93066151737
 
-Evaluation on Agile function, p = 10 - 1000, seeds = 30
+Evaluation on Agile function, p = 10 - 2500, seeds = 30
 1560,0.2659494953234
 1950,0.39853457319889
 2110,0.26756686366421
@@ -308,4 +308,5 @@ Evaluation on Agile function, p = 10 - 1000, seeds = 30
 2280,0.27763266391093
 0.28511077732122
 
+Evaluation on COCOMO function, p = 10 - 2500, seeds = 30
 

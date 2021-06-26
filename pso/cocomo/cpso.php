@@ -273,7 +273,6 @@ class ParticleSwarmOptimizer
                     $start = 0;
                     $end = $numberOfRandomSeeds - 1;
                     $initial_populations = Dataset::provide($seeds, $start, $end);
-
                     $results[] = $this->findSolution($projects, $initial_populations);
                 }
             }
@@ -377,7 +376,6 @@ foreach ($fileNames as $file_name) {
 
             $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
             $optimized = $optimize->finishing($numberOfRandomSeeds, $file_name);
-            //print_r($optimized);
             $maes[] = (string)(round($optimized[0]));
         }
     }
