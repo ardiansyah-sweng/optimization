@@ -90,14 +90,14 @@ class ParticleSwarmOptimizer
 
     function velocity($inertia, $R1, $R2, $velocity, $position, $Pbest, $Gbest)
     {
-        return $inertia * $velocity + ($this->C1 * $R1) * (floatval($Pbest) - floatval($position)) + ($this->C2 * $R2) * (floatval($Gbest) - floatval($position));
+        return floatval($inertia) * floatval($velocity) + ($this->C1 * $R1) * (floatval($Pbest) - floatval($position)) + ($this->C2 * $R2) * (floatval($Gbest) - floatval($position));
     }
 
 
     function comparePbests($Pbests, $particles)
     {
         foreach ($Pbests as $key => $pbest) {
-            if ($pbest['ae'] > $particles[$key]['ae']) {    
+            if ($pbest['ae'] > $particles[$key]['ae']) {
                 $Pbests[$key] = $particles[$key];
             }
         }
@@ -206,16 +206,16 @@ class ParticleSwarmOptimizer
         return $Gbests[$index_minimal_AE];
     } ## End of findSolution()
 
-    function finishing()
+    function finishing($numberOfRandomSeeds, $file_name)
     {
         $datasets = [
-            'filename' => 'seeds.txt',
+            'filename' => $file_name,
             'index' => 0,
             'name' => 'A'
         ];
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
-        $end = [];
+        $ret = [];
 
         for ($i = 0; $i <= $this->trials - 1; $i++) {
             foreach ($this->prepareDataset() as $key => $project) {
@@ -270,26 +270,16 @@ class ParticleSwarmOptimizer
                     $EM['site'] = $projects['site'];
                     $EM['sced'] = $projects['sced'];
 
-                    if ($i === 0) {
-                        $start = 0;
-                    } else {
-                        $start = $end[$i - 1] + 1;
-                    }
-                    $end[$i] = $start + ($this->swarm_size - 1);
-                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $start = 0;
+                    $end = $numberOfRandomSeeds - 1;
+                    $initial_populations = Dataset::provide($seeds, $start, $end);
+
                     $results[] = $this->findSolution($projects, $initial_populations);
                 }
             }
             $mae = Arithmatic::mae($results);
-            $data = array($mae);
-            $fp = fopen('../results/tharwat.txt', 'a');
-            fputcsv($fp, $data);
-            fclose($fp);
             $ret[] = $mae;
-            $results = [];
-            $end = [];
         }
-
         return $ret;
     }
 }
@@ -332,26 +322,78 @@ function get_combinations($arrays)
     return $result;
 }
 
-$combinations = get_combinations(
-    array(
-        'particle_size' => array(100)
-    )
-);
+$maes = [];
+$fileNames = [
+    'filenames/seeds_cpso_mucpso2.txt',
+    'filenames/seeds_cpso_mucpso3.txt',
+    'filenames/seeds_cpso_mucpso4.txt',
+    'filenames/seeds_cpso_mucpso5.txt',
+    'filenames/seeds_cpso_mucpso6.txt',
+    'filenames/seeds_cpso_mucpso7.txt',
+    'filenames/seeds_cpso_mucpso8.txt',
+    'filenames/seeds_cpso_mucpso9.txt',
+    'filenames/seeds_cpso_mucpso10.txt',
+    'filenames/seeds_cpso_mucpso11.txt',
+    'filenames/seeds_cpso_mucpso12.txt',
+    'filenames/seeds_cpso_mucpso13.txt',
+    'filenames/seeds_cpso_mucpso14.txt',
+    'filenames/seeds_cpso_mucpso15.txt',
+    'filenames/seeds_cpso_mucpso16.txt',
+    'filenames/seeds_cpso_mucpso17.txt',
+    'filenames/seeds_cpso_mucpso18.txt',
+    'filenames/seeds_cpso_mucpso19.txt',
+    'filenames/seeds_cpso_mucpso20.txt',
+    'filenames/seeds_cpso_mucpso21.txt',
+    'filenames/seeds_cpso_mucpso22.txt',
+    'filenames/seeds_cpso_mucpso23.txt',
+    'filenames/seeds_cpso_mucpso24.txt',
+    'filenames/seeds_cpso_mucpso25.txt',
+    'filenames/seeds_cpso_mucpso26.txt',
+    'filenames/seeds_cpso_mucpso27.txt',
+    'filenames/seeds_cpso_mucpso28.txt',
+    'filenames/seeds_cpso_mucpso29.txt'
+];
 
-foreach ($combinations as $key => $combination) {
-    $dataset = 'cocomo_nasa93.txt';
-    $swarm_size = $combination['particle_size'];
-    $C1 = 1.5;
-    $C2 = 1.5;
-    $MAX_ITERATION = 40;
-    $max_inertia = 0.9;
-    $min_inertia = 0.4;
-    $stopping_value = 10;
-    $trials = 30;
-    $productivity_factor = 20;
-    $MAX_COUNTER = 100;
+foreach ($fileNames as $file_name) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
+        $combinations = get_combinations(
+            array(
+                'particle_size' => array($numberOfRandomSeeds)
+            )
+        );
+        
+        foreach ($combinations as $key => $combination) {
+            $dataset = 'cocomo_nasa93.txt';
+            $swarm_size = $combination['particle_size'];
+            $C1 = 1.5;
+            $C2 = 1.5;
+            $MAX_ITERATION = 40;
+            $max_inertia = 0.9;
+            $min_inertia = 0.4;
+            $stopping_value = 10;
+            $trials = 1;
+            $productivity_factor = 20;
+            $MAX_COUNTER = 100;
 
-    $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
-    $optimized = $optimize->finishing();
-    print_r($optimized);
+            $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
+            $optimized = $optimize->finishing($numberOfRandomSeeds, $file_name);
+            //print_r($optimized);
+            $maes[] = (string)(round($optimized[0]));
+        }
+    }
+    echo '<p>';
+    $countAllMAE = array_count_values($maes);
+    print_r($countAllMAE);
+    echo '<p>';
+    $maxStagnantValue = max($countAllMAE);
+    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+    echo $maxStagnantValue;
+    echo '<br>';
+    echo $indexMaxStagnantValue;
+
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $fp = fopen('../results/tharwat.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $maes = [];
 }
