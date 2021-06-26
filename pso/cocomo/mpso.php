@@ -1,5 +1,5 @@
 <?php
-set_time_limit(1000000);
+set_time_limit(100000000);
 include 'raw_data_interface.php';
 include 'data_preprocessing.php';
 include 'seeds_class.php';

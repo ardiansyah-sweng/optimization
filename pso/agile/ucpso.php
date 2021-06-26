@@ -555,10 +555,39 @@ function get_combinations($arrays)
 
 $maes = [];
 $fileNames = [
-    'seeds_m_ucpso0.txt',
+    'filenames/seeds_m_ucpso0.txt',
+    'filenames/seeds_m_ucpso1.txt',
+    'filenames/seeds_m_ucpso2.txt',
+    'filenames/seeds_m_ucpso3.txt',
+    'filenames/seeds_m_ucpso4.txt',
+    'filenames/seeds_m_ucpso5.txt',
+    'filenames/seeds_m_ucpso6.txt',
+    'filenames/seeds_m_ucpso7.txt',
+    'filenames/seeds_m_ucpso8.txt',
+    'filenames/seeds_m_ucpso9.txt',
+    // 'filenames/seeds_m_ucpso10.txt',
+    // 'filenames/seeds_m_ucpso11.txt',
+    // 'filenames/seeds_m_ucpso12.txt',
+    // 'filenames/seeds_m_ucpso13.txt',
+    // 'filenames/seeds_m_ucpso14.txt',
+    // 'filenames/seeds_m_ucpso15.txt',
+    // 'filenames/seeds_m_ucpso16.txt',
+    // 'filenames/seeds_m_ucpso17.txt',
+    // 'filenames/seeds_m_ucpso18.txt',
+    // 'filenames/seeds_m_ucpso19.txt',
+    // 'filenames/seeds_m_ucpso20.txt',
+    // 'filenames/seeds_m_ucpso21.txt',
+    // 'filenames/seeds_m_ucpso22.txt',
+    // 'filenames/seeds_m_ucpso23.txt',
+    // 'filenames/seeds_m_ucpso24.txt',
+    // 'filenames/seeds_m_ucpso25.txt',
+    // 'filenames/seeds_m_ucpso26.txt',
+    // 'filenames/seeds_m_ucpso27.txt',
+    // 'filenames/seeds_m_ucpso28.txt',
+    // 'filenames/seeds_m_ucpso29.txt',
 ];
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 1000; $numberOfRandomSeeds += 10) {
         $combinations = get_combinations(
             array(
                 'chaotic' => array('sinu'),
@@ -603,7 +632,8 @@ foreach ($fileNames as $file_name) {
             $optimized = $optimize->processingDataset($numberOfRandomSeeds, $file_name);
             print_r($optimized);
             echo '<br>';
-            $maes[] = (string)$optimized[0];
+            $maes[] = (string)(number_format((float)$optimized[0],2));
+            // number_format((float)$number, 2, '.', '');
         }
     }
     $countAllMAE = array_count_values($maes);
