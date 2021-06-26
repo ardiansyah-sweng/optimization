@@ -406,16 +406,16 @@ class ParticleSwarmOptimizer
         return $Gbests[$index_minimal_AE];
     } ## End of findSolution()
 
-    function finishing()
+    function finishing($numberOfRandomSeeds, $file_name)
     {
         $datasets = [
-            'filename' => 'seeds.txt',
+            'filename' => $file_name,
             'index' => 0,
             'name' => 'A'
         ];
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
-        $end = [];
+        $ret = [];
 
         for ($i = 0; $i <= $this->trials - 1; $i++) {
             foreach ($this->prepareDataset() as $key => $project) {
@@ -470,21 +470,13 @@ class ParticleSwarmOptimizer
                     $EM['site'] = $projects['site'];
                     $EM['sced'] = $projects['sced'];
 
-                    if ($i === 0) {
-                        $start = 0;
-                    } else {
-                        $start = $end[$i - 1] + 1;
-                    }
-                    $end[$i] = $start + ($this->swarm_size - 1);
-                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $start = 0;
+                    $end = $numberOfRandomSeeds - 1;
+                    $initial_populations = Dataset::provide($seeds, $start, $end);
                     $results[] = $this->findSolution($projects, $initial_populations);
                 }
             }
             $mae = Arithmatic::mae($results);
-            $data = array($mae);
-            $fp = fopen('../results/liu.txt', 'a');
-            fputcsv($fp, $data);
-            fclose($fp);
             $ret[] = $mae;
             $results = [];
         }
@@ -530,26 +522,79 @@ function get_combinations($arrays)
     return $result;
 }
 
-$combinations = get_combinations(
-    array(
-        'particle_size' => array(10)
-    )
-);
+$maes = [];
+$fileNames = [
+    'filenames/mpso/seeds_mpso0.txt',
+    'filenames/mpso/seeds_mpso1.txt',
+    'filenames/mpso/seeds_mpso2.txt',
+    'filenames/mpso/seeds_mpso3.txt',
+    'filenames/mpso/seeds_mpso4.txt',
+    'filenames/mpso/seeds_mpso5.txt',
+    'filenames/mpso/seeds_mpso6.txt',
+    'filenames/mpso/seeds_mpso7.txt',
+    'filenames/mpso/seeds_mpso8.txt',
+    'filenames/mpso/seeds_mpso9.txt',
+    'filenames/mpso/seeds_mpso10.txt',
+    'filenames/mpso/seeds_mpso11.txt',
+    'filenames/mpso/seeds_mpso12.txt',
+    'filenames/mpso/seeds_mpso13.txt',
+    'filenames/mpso/seeds_mpso14.txt',
+    'filenames/mpso/seeds_mpso15.txt',
+    'filenames/mpso/seeds_mpso16.txt',
+    'filenames/mpso/seeds_mpso17.txt',
+    'filenames/mpso/seeds_mpso18.txt',
+    'filenames/mpso/seeds_mpso19.txt',
+    'filenames/mpso/seeds_mpso20.txt',
+    'filenames/mpso/seeds_mpso21.txt',
+    'filenames/mpso/seeds_mpso22.txt',
+    'filenames/mpso/seeds_mpso23.txt',
+    'filenames/mpso/seeds_mpso24.txt',
+    'filenames/mpso/seeds_mpso25.txt',
+    'filenames/mpso/seeds_mpso26.txt',
+    'filenames/mpso/seeds_mpso27.txt',
+    'filenames/mpso/seeds_mpso28.txt',
+    'filenames/mpso/seeds_mpso29.txt',
+];
 
-foreach ($combinations as $key => $combination) {
-    $dataset = 'cocomo_nasa93.txt';
-    $swarm_size = $combination['particle_size'];
-    $C1 = 2;
-    $C2 = 2;
-    $MAX_ITERATION = 40;
-    $max_inertia = 0.9;
-    $min_inertia = 0.4;
-    $stopping_value = 10;
-    $trials = 30;
-    $productivity_factor = 20;
-    $MAX_COUNTER = 100;
+foreach ($fileNames as $file_name) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 100; $numberOfRandomSeeds += 10) {
+        $combinations = get_combinations(
+            array(
+                'particle_size' => array($numberOfRandomSeeds)
+            )
+        );
 
-    $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
-    $optimized = $optimize->finishing();
-    print_r($optimized);
+        foreach ($combinations as $key => $combination) {
+            $dataset = 'cocomo_nasa93.txt';
+            $swarm_size = $combination['particle_size'];
+            $C1 = 2;
+            $C2 = 2;
+            $MAX_ITERATION = 40;
+            $max_inertia = 0.9;
+            $min_inertia = 0.4;
+            $stopping_value = 10;
+            $trials = 1;
+            $productivity_factor = 20;
+            $MAX_COUNTER = 100;
+
+            $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials, $scales);
+            $optimized = $optimize->finishing($numberOfRandomSeeds, $file_name);
+            $maes[] = (string)(round($optimized[0]));
+        }
+    }
+    echo '<p>';
+    $countAllMAE = array_count_values($maes);
+    print_r($countAllMAE);
+    echo '<p>';
+    $maxStagnantValue = max($countAllMAE);
+    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+    echo $maxStagnantValue;
+    echo '<br>';
+    echo $indexMaxStagnantValue;
+
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $fp = fopen('../results/liu.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $maes = [];
 }
