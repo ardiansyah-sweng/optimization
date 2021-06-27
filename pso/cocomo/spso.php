@@ -376,7 +376,7 @@ foreach ($fileNames as $file_name) {
     }
     echo '<p>';
     $countAllMAE = array_count_values($maes);
-    print_r($countAllMAE);
+    // print_r($countAllMAE);
     echo '<p>';
     $maxStagnantValue = max($countAllMAE);
     $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);

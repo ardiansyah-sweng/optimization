@@ -1,5 +1,5 @@
 <?php
-set_time_limit(10000);
+set_time_limit(10000000);
 include 'chaotic_interface.php';
 include 'seeds_spso_cpso.txt';
 include 'seeds_class.php';
@@ -201,37 +201,30 @@ class SPSO
         return $results[$index];
     } // End of main()
 
-    function finishing($dataset, $max_iter, $swarm_size, $max_trial)
+    function finishing($dataset, $max_iter, $swarm_size, $max_trial, $numberOfRandomSeeds, $file_name)
     {
         $datasets = [
-            'filename' => 'seeds_spso_cpso.txt',
+            'filename' => $file_name,
             'index' => [0, 1, 2],
             'name' => ['xSimple', 'xAverage', 'xComplex']
         ];
 
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
-        $end = [];
+        $ret = [];
 
         for ($i = 0; $i <= $max_trial - 1; $i++) {
             foreach ($dataset as $key => $project) {
                 if ($key >= 0) {
-                    if ($i === 0) {
-                        $start = 0;
-                    } else {
-                        $start = $end[$i - 1] + 1;
-                    }
-                    $end[$i] = $start + ($this->swarm_size - 1);
-                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $start = 0;
+                    $end = $numberOfRandomSeeds - 1;
+                    $initial_populations = Dataset::provide($seeds, $start, $end);
                     $results[] = $this->Main($project, $max_iter, $swarm_size, $initial_populations);
                 }
             }
             $mae = Arithmatic::mae($results);
-            $data = array($mae);
-            $fp = fopen('../results/psorigin.txt', 'a');
-            fputcsv($fp, $data);
-            fclose($fp);
             $ret[] = $mae;
+            $results = [];
         }
         return $ret;
     }
@@ -331,28 +324,81 @@ function get_combinations($arrays)
     return $result;
 }
 
-$combinations = get_combinations(
-    array(
-        'particle_size' => array(100),
-    )
-);
+$maes = [];
+$fileNames = [
+    'seeds/spso_cpso_ucpso/seeds0.txt',
+    'seeds/spso_cpso_ucpso/seeds1.txt',
+    'seeds/spso_cpso_ucpso/seeds2.txt',
+    'seeds/spso_cpso_ucpso/seeds3.txt',
+    'seeds/spso_cpso_ucpso/seeds4.txt',
+    'seeds/spso_cpso_ucpso/seeds5.txt',
+    'seeds/spso_cpso_ucpso/seeds6.txt',
+    'seeds/spso_cpso_ucpso/seeds7.txt',
+    'seeds/spso_cpso_ucpso/seeds8.txt',
+    'seeds/spso_cpso_ucpso/seeds9.txt',
+    'seeds/spso_cpso_ucpso/seeds10.txt',
+    'seeds/spso_cpso_ucpso/seeds11.txt',
+    'seeds/spso_cpso_ucpso/seeds12.txt',
+    'seeds/spso_cpso_ucpso/seeds13.txt',
+    'seeds/spso_cpso_ucpso/seeds14.txt',
+    'seeds/spso_cpso_ucpso/seeds15.txt',
+    'seeds/spso_cpso_ucpso/seeds16.txt',
+    'seeds/spso_cpso_ucpso/seeds17.txt',
+    'seeds/spso_cpso_ucpso/seeds18.txt',
+    'seeds/spso_cpso_ucpso/seeds19.txt',
+    'seeds/spso_cpso_ucpso/seeds20.txt',
+    'seeds/spso_cpso_ucpso/seeds21.txt',
+    'seeds/spso_cpso_ucpso/seeds22.txt',
+    'seeds/spso_cpso_ucpso/seeds23.txt',
+    'seeds/spso_cpso_ucpso/seeds24.txt',
+    'seeds/spso_cpso_ucpso/seeds25.txt',
+    'seeds/spso_cpso_ucpso/seeds26.txt',
+    'seeds/spso_cpso_ucpso/seeds27.txt',
+    'seeds/spso_cpso_ucpso/seeds28.txt',
+    'seeds/spso_cpso_ucpso/seeds29.txt',
+];
 
-foreach ($combinations as $key => $combination) {
-    $MAX_ITER = 40;
-    $MAX_TRIAL = 30;
-    $swarm_size = $combination['particle_size'];
+foreach ($fileNames as $file_name) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
+        $combinations = get_combinations(
+            array(
+                'particle_size' => array($numberOfRandomSeeds),
+            )
+        );
 
-    $start = microtime(true);
-    $range_positions = [
-        'min_xSimple' => 5, 
-        'max_xSimple' => 7.49, 
-        'min_xAverage' => 7.5, 
-        'max_xAverage' => 12.49, 
-        'min_xComplex' => 12.5, 
-        'max_xComplex' => 15
-    ];
+        foreach ($combinations as $key => $combination) {
+            $MAX_ITER = 40;
+            $MAX_TRIAL = 1;
+            $swarm_size = $combination['particle_size'];
 
-    $mpucwPSO = new SPSO($swarm_size, $range_positions);
-    $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $MAX_TRIAL);
-    print_r($optimized);
+            $start = microtime(true);
+            $range_positions = [
+                'min_xSimple' => 5,
+                'max_xSimple' => 7.49,
+                'min_xAverage' => 7.5,
+                'max_xAverage' => 12.49,
+                'min_xComplex' => 12.5,
+                'max_xComplex' => 15
+            ];
+
+            $mpucwPSO = new SPSO($swarm_size, $range_positions);
+            $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
+            $maes[] = (string)(round($optimized[0]));
+        }
+    }
+    echo '<p>';
+    $countAllMAE = array_count_values($maes);
+    print_r($countAllMAE);
+    echo '<p>';
+    $maxStagnantValue = max($countAllMAE);
+    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+    echo $maxStagnantValue;
+    echo '<br>';
+    echo $indexMaxStagnantValue;
+
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $fp = fopen('../results/psorigin.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $maes = [];
 }
