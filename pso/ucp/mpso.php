@@ -532,7 +532,7 @@ $fileNames = [
 ];
 
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 50; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
         $combinations = get_combinations(
             array(
                 'particle_size' => array($numberOfRandomSeeds)
