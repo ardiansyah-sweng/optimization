@@ -1,37 +1,8 @@
 <?php
-set_time_limit(1000000);
-include 'seeds_mpso_mucpso.txt';
-
-class Read
-{
-    public $index;
-    public $column;
-    public $filename;
-
-    function __construct($dataset)
-    {
-        $this->filename = $dataset['filename'];
-        $this->index = $dataset['index'];
-        $this->column = $dataset['name'];
-    }
-
-    public function datasetFile()
-    {
-        $raw_dataset = file($this->filename);
-        foreach ($raw_dataset as $val) {
-            $data[] = explode(",", $val);
-        }
-        foreach ($data as $key => $val) {
-            foreach (array_keys($val) as $subkey) {
-                if ($subkey == $this->index[$subkey]) {
-                    $data[$key][$this->column[$subkey]] = $data[$key][$subkey];
-                    unset($data[$key][$subkey]);
-                }
-            }
-        }
-        return $data;
-    }
-}
+set_time_limit(100000000);
+include 'raw_data_interface.php';
+include 'data_preprocessing.php';
+include 'seeds_class.php';
 
 class ParticleSwarmOptimizer
 {
@@ -404,63 +375,34 @@ class ParticleSwarmOptimizer
         return $Gbests[$index_minimal_AE];
     } ## End of findSolution()
 
-    function finishing()
+    function finishing($numberOfRandomSeeds, $file_name)
     {
         $datasets = [
-            'filename' => 'seeds_mpso_mucpso.txt',
+            'filename' => $file_name,
             'index' => [0, 1, 2],
             'name' => ['simple', 'average', 'complex']
         ];
 
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
-        $end = [];
+        $ret = [];
 
         for ($i = 0; $i <= $this->trials - 1; $i++) {
             foreach ($this->dataset as $key => $project) {
                 if ($key >= 0) {
-                    if ($i === 0) {
-                        $start = 0;
-                    } else {
-                        $start = $end[$i - 1] + 1;
-                    }
-                    $end[$i] = $start + ($this->swarm_size - 1);
-                    $initial_populations = Dataset::provide($seeds, $start, $end[$i]);
+                    $start = 0;
+                    $end = $numberOfRandomSeeds - 1;
+                    $initial_populations = Dataset::provide($seeds, $start, $end);
                     $results[] = $this->findSolution($project, $initial_populations);
                 }
             }
             $mae = Arithmatic::mae($results);
-            $data = array($mae);
-            $fp = fopen('../results/liu.txt', 'a');
-            fputcsv($fp, $data);
-            fclose($fp);
             $ret[] = $mae;
+            $results = [];
         }
         return $ret;
     }
 }
-
-class Arithmatic
-{
-    public static function mae($data)
-    {
-        return array_sum(array_column($data, 'ae')) / count($data);
-    }
-}
-
-class Dataset
-{
-    public static function provide($seeds, $start, $end)
-    {
-        foreach ($seeds as $key => $dataset) {
-            if ($key >= $start && $key <= $end) {
-                $ret[] = $dataset;
-            }
-        }
-        return $ret;
-    }
-}
-
 
 /**
  * Dataset 71 data point
@@ -555,25 +497,77 @@ function get_combinations($arrays)
     return $result;
 }
 
-$combinations = get_combinations(
-    array(
-        'particle_size' => array(10)
-    )
-);
+$maes = [];
+$fileNames = [
+    'seeds/mpso_mucpso/seeds0.txt',
+    'seeds/mpso_mucpso/seeds1.txt',
+    'seeds/mpso_mucpso/seeds2.txt',
+    'seeds/mpso_mucpso/seeds3.txt',
+    'seeds/mpso_mucpso/seeds4.txt',
+    'seeds/mpso_mucpso/seeds5.txt',
+    'seeds/mpso_mucpso/seeds6.txt',
+    'seeds/mpso_mucpso/seeds7.txt',
+    'seeds/mpso_mucpso/seeds8.txt',
+    'seeds/mpso_mucpso/seeds9.txt',
+    'seeds/mpso_mucpso/seeds10.txt',
+    'seeds/mpso_mucpso/seeds11.txt',
+    'seeds/mpso_mucpso/seeds12.txt',
+    'seeds/mpso_mucpso/seeds13.txt',
+    'seeds/mpso_mucpso/seeds14.txt',
+    'seeds/mpso_mucpso/seeds15.txt',
+    'seeds/mpso_mucpso/seeds16.txt',
+    'seeds/mpso_mucpso/seeds17.txt',
+    'seeds/mpso_mucpso/seeds18.txt',
+    'seeds/mpso_mucpso/seeds19.txt',
+    'seeds/mpso_mucpso/seeds20.txt',
+    'seeds/mpso_mucpso/seeds21.txt',
+    'seeds/mpso_mucpso/seeds22.txt',
+    'seeds/mpso_mucpso/seeds23.txt',
+    'seeds/mpso_mucpso/seeds24.txt',
+    'seeds/mpso_mucpso/seeds25.txt',
+    'seeds/mpso_mucpso/seeds26.txt',
+    'seeds/mpso_mucpso/seeds27.txt',
+    'seeds/mpso_mucpso/seeds28.txt',
+    'seeds/mpso_mucpso/seeds29.txt',
+];
 
-foreach ($combinations as $key => $combination) {
-    $swarm_size = $combination['particle_size'];
-    $C1 = 2;
-    $C2 = 2;
-    $MAX_ITERATION = 40;
-    $max_inertia = 0.9;
-    $min_inertia = 0.4;
-    $stopping_value = 200;
-    $trials = 30;
-    $productivity_factor = 20;
-    $MAX_COUNTER = 100;
+foreach ($fileNames as $file_name) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 50; $numberOfRandomSeeds += 10) {
+        $combinations = get_combinations(
+            array(
+                'particle_size' => array($numberOfRandomSeeds)
+            )
+        );
 
-    $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials);
-    $optimized = $optimize->finishing();
-    print_r($optimized);
+        foreach ($combinations as $key => $combination) {
+            $swarm_size = $combination['particle_size'];
+            $C1 = 2;
+            $C2 = 2;
+            $MAX_ITERATION = 40;
+            $max_inertia = 0.9;
+            $min_inertia = 0.4;
+            $stopping_value = 200;
+            $trials = 1;
+            $productivity_factor = 20;
+            $MAX_COUNTER = 100;
+
+            $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials);
+            $optimized = $optimize->finishing($numberOfRandomSeeds, $file_name);
+            $maes[] = (string)(number_format((float)$optimized[0],2));
+        }
+    }
+    $countAllMAE = array_count_values($maes);
+    print_r($countAllMAE);
+    echo '<p>';
+    $maxStagnantValue = max($countAllMAE);
+    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+    echo $maxStagnantValue;
+    echo '<br>';
+    echo $indexMaxStagnantValue;
+
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $fp = fopen('../results/liu.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $maes = [];
 }

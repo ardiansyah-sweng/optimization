@@ -458,7 +458,7 @@ $fileNames = [
 ];
 
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 1000; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
         $combinations = get_combinations(
             array(
                 'chaotic' => array('sinu'),
@@ -471,8 +471,6 @@ foreach ($fileNames as $file_name) {
             $MAX_TRIAL = 1;
             $swarm_size = $combination['particle_size'];
             $max_counter = 100000;
-
-            $start = microtime(true);
 
             $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
             $optimized = $mpucwPSO->finishing($MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
@@ -493,4 +491,5 @@ foreach ($fileNames as $file_name) {
     $fp = fopen('../results/ardi2021.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
+    $maes = [];
 }

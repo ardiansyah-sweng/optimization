@@ -693,4 +693,5 @@ foreach ($fileNames as $file_name) {
     $fp = fopen('../results/ardi2021.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
+    $maes = [];
 }

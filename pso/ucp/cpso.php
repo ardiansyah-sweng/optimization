@@ -422,39 +422,39 @@ function get_combinations($arrays)
 $maes = [];
 $fileNames = [
     'seeds/spso_cpso_ucpso/seeds0.txt',
-    // 'seeds/spso_cpso_ucpso/seeds1.txt',
-    // 'seeds/spso_cpso_ucpso/seeds2.txt',
-    // 'seeds/spso_cpso_ucpso/seeds3.txt',
-    // 'seeds/spso_cpso_ucpso/seeds4.txt',
-    // 'seeds/spso_cpso_ucpso/seeds5.txt',
-    // 'seeds/spso_cpso_ucpso/seeds6.txt',
-    // 'seeds/spso_cpso_ucpso/seeds7.txt',
-    // 'seeds/spso_cpso_ucpso/seeds8.txt',
-    // 'seeds/spso_cpso_ucpso/seeds9.txt',
-    // 'seeds/spso_cpso_ucpso/seeds10.txt',
-    // 'seeds/spso_cpso_ucpso/seeds11.txt',
-    // 'seeds/spso_cpso_ucpso/seeds12.txt',
-    // 'seeds/spso_cpso_ucpso/seeds13.txt',
-    // 'seeds/spso_cpso_ucpso/seeds14.txt',
-    // 'seeds/spso_cpso_ucpso/seeds15.txt',
-    // 'seeds/spso_cpso_ucpso/seeds16.txt',
-    // 'seeds/spso_cpso_ucpso/seeds17.txt',
-    // 'seeds/spso_cpso_ucpso/seeds18.txt',
-    // 'seeds/spso_cpso_ucpso/seeds19.txt',
-    // 'seeds/spso_cpso_ucpso/seeds20.txt',
-    // 'seeds/spso_cpso_ucpso/seeds21.txt',
-    // 'seeds/spso_cpso_ucpso/seeds22.txt',
-    // 'seeds/spso_cpso_ucpso/seeds23.txt',
-    // 'seeds/spso_cpso_ucpso/seeds24.txt',
-    // 'seeds/spso_cpso_ucpso/seeds25.txt',
-    // 'seeds/spso_cpso_ucpso/seeds26.txt',
-    // 'seeds/spso_cpso_ucpso/seeds27.txt',
-    // 'seeds/spso_cpso_ucpso/seeds28.txt',
-    // 'seeds/spso_cpso_ucpso/seeds29.txt',
+    'seeds/spso_cpso_ucpso/seeds1.txt',
+    'seeds/spso_cpso_ucpso/seeds2.txt',
+    'seeds/spso_cpso_ucpso/seeds3.txt',
+    'seeds/spso_cpso_ucpso/seeds4.txt',
+    'seeds/spso_cpso_ucpso/seeds5.txt',
+    'seeds/spso_cpso_ucpso/seeds6.txt',
+    'seeds/spso_cpso_ucpso/seeds7.txt',
+    'seeds/spso_cpso_ucpso/seeds8.txt',
+    'seeds/spso_cpso_ucpso/seeds9.txt',
+    'seeds/spso_cpso_ucpso/seeds10.txt',
+    'seeds/spso_cpso_ucpso/seeds11.txt',
+    'seeds/spso_cpso_ucpso/seeds12.txt',
+    'seeds/spso_cpso_ucpso/seeds13.txt',
+    'seeds/spso_cpso_ucpso/seeds14.txt',
+    'seeds/spso_cpso_ucpso/seeds15.txt',
+    'seeds/spso_cpso_ucpso/seeds16.txt',
+    'seeds/spso_cpso_ucpso/seeds17.txt',
+    'seeds/spso_cpso_ucpso/seeds18.txt',
+    'seeds/spso_cpso_ucpso/seeds19.txt',
+    'seeds/spso_cpso_ucpso/seeds20.txt',
+    'seeds/spso_cpso_ucpso/seeds21.txt',
+    'seeds/spso_cpso_ucpso/seeds22.txt',
+    'seeds/spso_cpso_ucpso/seeds23.txt',
+    'seeds/spso_cpso_ucpso/seeds24.txt',
+    'seeds/spso_cpso_ucpso/seeds25.txt',
+    'seeds/spso_cpso_ucpso/seeds26.txt',
+    'seeds/spso_cpso_ucpso/seeds27.txt',
+    'seeds/spso_cpso_ucpso/seeds28.txt',
+    'seeds/spso_cpso_ucpso/seeds29.txt',
 ];
 
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 200; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
 
         $combinations = get_combinations(
             array(
@@ -471,7 +471,7 @@ foreach ($fileNames as $file_name) {
 
             $mpucwPSO = new PSO();
             $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, 'singer', 'sine', $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
-            $maes[] = (string)(round($optimized[0]));
+            $maes[] = (string)(number_format((float)$optimized[0],2));
         }
     }
     echo '<p>';
