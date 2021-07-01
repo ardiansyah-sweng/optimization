@@ -1,5 +1,5 @@
 <?php
-set_time_limit(1000000);
+set_time_limit(10000000);
 include 'seeds_class.php';
 
 class Raoptimizer
@@ -294,16 +294,17 @@ class Raoptimizer
         return $results[$index];
     }
 
-    function processingDataset($numberOfRandomSeeds)
+    function processingDataset($numberOfRandomSeeds, $file_name)
     {
         $datasets = [
-            'filename' => 'seeds_spso_cpso30.txt',
+            'filename' => $file_name,
             'index' => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
             'name' => ['ff_team_composition', 'ff_process', 'ff_environmental_factors', 'ff_team_dynamics', 'dff_expected_team_change', 'dff_introduction_new_tools', 'dff_vendor_defect', 'dff_team_member_responsibility', 'dff_personal_issue', 'dff_expected_delay', 'dff_expected_ambiguity', 'dff_expected_change', 'dff_expected_relocation']
         ];
         $initial_populations = new Read($datasets);
         $seeds = $initial_populations->datasetFile();
         $end = [];
+        $ret = [];
         $data_set = $this->prepareDataset();
         for ($i = 0; $i <= $this->parameters['trials'] - 1; $i++) {
             foreach ($data_set as $key => $target_project) {
@@ -315,13 +316,9 @@ class Raoptimizer
                 }
             }
             $mae = Arithmatic::mae($results);
-            //$data = array($numberOfRandomSeeds, $mae);
-            // $fp = fopen('../results/psorigin.txt', 'a');
-            // fputcsv($fp, $data);
-            // fclose($fp);
             $ret[] = $mae;
         }
-        
+
         return $ret;
     }
 } ## End of Raoptimizer
@@ -353,61 +350,95 @@ function get_combinations($arrays)
 }
 
 $maes = [];
-for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
-    $combinations = get_combinations(
-        array(
-            'chaotic' => array('sinu'),
-            'particle_size' => array($numberOfRandomSeeds), 
-        )
-    );
+$fileNames = [
+    'seeds_spso_cpso4.txt',
+    'seeds_spso_cpso5.txt',
+    'seeds_spso_cpso6.txt',
+    'seeds_spso_cpso7.txt',
+    'seeds_spso_cpso8.txt',
+    'seeds_spso_cpso9.txt',
+    'seeds_spso_cpso10.txt',
+    'seeds_spso_cpso11.txt',
+    'seeds_spso_cpso12.txt',
+    'seeds_spso_cpso13.txt',
+    'seeds_spso_cpso14.txt',
+    'seeds_spso_cpso15.txt',
+    'seeds_spso_cpso16.txt',
+    'seeds_spso_cpso17.txt',
+    'seeds_spso_cpso18.txt',
+    'seeds_spso_cpso19.txt',
+    'seeds_spso_cpso20.txt',
+    'seeds_spso_cpso21.txt',
+    'seeds_spso_cpso22.txt',
+    'seeds_spso_cpso23.txt',
+    'seeds_spso_cpso24.txt',
+    'seeds_spso_cpso25.txt',
+    'seeds_spso_cpso26.txt',
+    'seeds_spso_cpso27.txt',
+    'seeds_spso_cpso28.txt',
+    'seeds_spso_cpso29.txt',
+];
 
-    foreach ($combinations as $key => $combination) {
-        $particle_size = $combination['particle_size'];
-        $maximum_generation = 40;
-        $trials = 1;
-        $fitness = 0.15;
-        $friction_factors = [
-            0.91,
-            0.89,
-            0.96,
-            0.85,
-            'max' => 1
-        ];
-        $dynamic_force_factors = [
-            0.91,
-            0.96,
-            0.90,
-            0.98,
-            0.98,
-            0.96,
-            0.95,
-            0.97,
-            0.98,
-            'max' => 1
-        ];
-        $parameters = [
-            'particle_size' => $particle_size,
-            'maximum_generation' => $maximum_generation,
-            'trials' => $trials,
-            'fitness' => $fitness,
-            'friction_factors' => $friction_factors,
-            'dynamic_force_factors' => $dynamic_force_factors
-        ];
+foreach ($fileNames as $file_name) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 50; $numberOfRandomSeeds += 10) {
+        $combinations = get_combinations(
+            array(
+                'chaotic' => array('sinu'),
+                'particle_size' => array($numberOfRandomSeeds),
+            )
+        );
 
-        $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
-        $optimized = $optimize->processingDataset($numberOfRandomSeeds);
-        // echo 'Random seeds: '. $numberOfRandomSeeds;
-        // echo ' '; 
-        // echo $optimized[0];
-        // echo '<br>';
-        $maes[] = (string)$optimized[0];
+        foreach ($combinations as $key => $combination) {
+            $particle_size = $combination['particle_size'];
+            $maximum_generation = 40;
+            $trials = 1;
+            $fitness = 0.15;
+            $friction_factors = [
+                0.91,
+                0.89,
+                0.96,
+                0.85,
+                'max' => 1
+            ];
+            $dynamic_force_factors = [
+                0.91,
+                0.96,
+                0.90,
+                0.98,
+                0.98,
+                0.96,
+                0.95,
+                0.97,
+                0.98,
+                'max' => 1
+            ];
+            $parameters = [
+                'particle_size' => $particle_size,
+                'maximum_generation' => $maximum_generation,
+                'trials' => $trials,
+                'fitness' => $fitness,
+                'friction_factors' => $friction_factors,
+                'dynamic_force_factors' => $dynamic_force_factors
+            ];
+
+            $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
+            $optimized = $optimize->processingDataset($numberOfRandomSeeds, $file_name);
+            $maes[] = (string)(number_format((float)$optimized[0], 2));
+        }
     }
+    $countAllMAE = array_count_values($maes);
+    print_r($countAllMAE);
+    echo '<p>';
+    $maxStagnantValue = max($countAllMAE);
+    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+    echo $maxStagnantValue;
+    echo '<br>';
+    echo $indexMaxStagnantValue;
+
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $data = array($maxStagnantValue, $indexMaxStagnantValue);
+    $fp = fopen('../results/psorigin.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $maes = [];
 }
-$countAllMAE = array_count_values($maes);
-print_r($countAllMAE);
-echo '<p>';
-$maxStagnantValue = max($countAllMAE);
-$indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
-echo $maxStagnantValue;
-echo '<br>';
-echo $indexMaxStagnantValue;

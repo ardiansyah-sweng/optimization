@@ -353,7 +353,7 @@ $fileNames = [
 ];
 
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 100; $numberOfRandomSeeds += 10) {
         $combinations = get_combinations(
             array(
                 'chaotic' => array('sinu'),

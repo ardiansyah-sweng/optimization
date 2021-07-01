@@ -420,6 +420,7 @@ function get_combinations($arrays)
 }
 
 $maes = [];
+$ret = [];
 $fileNames = [
     'seeds/spso_cpso_ucpso/seeds0.txt',
     'seeds/spso_cpso_ucpso/seeds1.txt',
@@ -453,40 +454,48 @@ $fileNames = [
     'seeds/spso_cpso_ucpso/seeds29.txt',
 ];
 
-foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
+for ($i = 20; $i <= 100; $i += 10) {
 
-        $combinations = get_combinations(
-            array(
-                'particle_size' => array($numberOfRandomSeeds),
-            )
-        );
+    foreach ($fileNames as $file_name) {
+        for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= $i; $numberOfRandomSeeds += 10) {
 
-        foreach ($combinations as $key => $combination) {
-            $MAX_ITER = 40;
-            $MAX_TRIAL = 1;
-            $numDataset = count($dataset);
-            $swarm_size = $combination['particle_size'];
-            $max_counter = 100000;
+            $combinations = get_combinations(
+                array(
+                    'particle_size' => array($numberOfRandomSeeds),
+                )
+            );
 
-            $mpucwPSO = new PSO();
-            $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, 'singer', 'sine', $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
-            $maes[] = (string)(number_format((float)$optimized[0],2));
+            foreach ($combinations as $key => $combination) {
+                $MAX_ITER = 40;
+                $MAX_TRIAL = 1;
+                $numDataset = count($dataset);
+                $swarm_size = $combination['particle_size'];
+                $max_counter = 100000;
+
+                $mpucwPSO = new PSO();
+                $optimized = $mpucwPSO->finishing($dataset, $MAX_ITER, $swarm_size, $max_counter, 'singer', 'sine', $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
+                $maes[] = (string)(number_format((float)$optimized[0], 0));
+            }
         }
+        $countAllMAE = array_count_values($maes);
+
+        $maxStagnantValue = max($countAllMAE);
+        $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+
+        $newStr = str_replace(',', '', $indexMaxStagnantValue);
+        $ret[] = (float)$newStr;
+
+        // $data = array($maxStagnantValue, (float)$newStr);
+        // $fp = fopen('../results/tharwat.txt', 'a');
+        // fputcsv($fp, $data);
+        // fclose($fp);
+        $maes = [];
     }
     echo '<p>';
-    $countAllMAE = array_count_values($maes);
-    print_r($countAllMAE);
-    echo '<p>';
-    $maxStagnantValue = max($countAllMAE);
-    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
-    echo $maxStagnantValue;
+    $mean = array_sum($ret) / count($ret);
+    echo 'Final: ' . $mean;
     echo '<br>';
-    echo $indexMaxStagnantValue;
-
-    $data = array($maxStagnantValue, $indexMaxStagnantValue);
-    $fp = fopen('../results/tharwat.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
-    $maes = [];
+    print_r($ret);
+    echo '<p>';
+    $ret = [];
 }

@@ -532,7 +532,7 @@ $fileNames = [
 ];
 
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 2500; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 50; $numberOfRandomSeeds += 10) {
         $combinations = get_combinations(
             array(
                 'particle_size' => array($numberOfRandomSeeds)
@@ -553,7 +553,7 @@ foreach ($fileNames as $file_name) {
 
             $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $MAX_ITERATION, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER, $trials);
             $optimized = $optimize->finishing($numberOfRandomSeeds, $file_name);
-            $maes[] = (string)(number_format((float)$optimized[0],2));
+            $maes[] = (string)(number_format((float)$optimized[0]));
         }
     }
     $countAllMAE = array_count_values($maes);

@@ -558,39 +558,39 @@ function get_combinations($arrays)
 $maes = [];
 $fileNames = [
     'seeds_mpso0.txt',
-    // 'seeds_mpso1.txt',
-    // 'seeds_mpso2.txt',
-    // 'seeds_mpso3.txt',
-    // 'seeds_mpso4.txt',
-    // 'seeds_mpso5.txt',
-    // 'seeds_mpso6.txt',
-    // 'seeds_mpso7.txt',
-    // 'seeds_mpso8.txt',
-    // 'seeds_mpso9.txt',
-    // 'seeds_mpso10.txt',
-    // 'seeds_mpso11.txt',
-    // 'seeds_mpso12.txt',
-    // 'seeds_mpso13.txt',
-    // 'seeds_mpso14.txt',
-    // 'seeds_mpso15.txt',
-    // 'seeds_mpso16.txt',
-    // 'seeds_mpso17.txt',
-    // 'seeds_mpso18.txt',
-    // 'seeds_mpso19.txt',
-    // 'seeds_mpso20.txt',
-    // 'seeds_mpso21.txt',
-    // 'seeds_mpso22.txt',
-    // 'seeds_mpso23.txt',
-    // 'seeds_mpso24.txt',
-    // 'seeds_mpso25.txt',
-    // 'seeds_mpso26.txt',
-    // 'seeds_mpso27.txt',
-    // 'seeds_mpso28.txt',
-    // 'seeds_mpso29.txt',
+    'seeds_mpso1.txt',
+    'seeds_mpso2.txt',
+    'seeds_mpso3.txt',
+    'seeds_mpso4.txt',
+    'seeds_mpso5.txt',
+    'seeds_mpso6.txt',
+    'seeds_mpso7.txt',
+    'seeds_mpso8.txt',
+    'seeds_mpso9.txt',
+    'seeds_mpso10.txt',
+    'seeds_mpso11.txt',
+    'seeds_mpso12.txt',
+    'seeds_mpso13.txt',
+    'seeds_mpso14.txt',
+    'seeds_mpso15.txt',
+    'seeds_mpso16.txt',
+    'seeds_mpso17.txt',
+    'seeds_mpso18.txt',
+    'seeds_mpso19.txt',
+    'seeds_mpso20.txt',
+    'seeds_mpso21.txt',
+    'seeds_mpso22.txt',
+    'seeds_mpso23.txt',
+    'seeds_mpso24.txt',
+    'seeds_mpso25.txt',
+    'seeds_mpso26.txt',
+    'seeds_mpso27.txt',
+    'seeds_mpso28.txt',
+    'seeds_mpso29.txt',
 ];
 
 foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 10000; $numberOfRandomSeeds += 10) {
+    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 30; $numberOfRandomSeeds += 10) {
         $combinations = get_combinations(
             array(
                 // 'chaotic' => array('logistic'),
@@ -633,7 +633,7 @@ foreach ($fileNames as $file_name) {
 
             $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
             $optimized = $optimize->processingDataset($numberOfRandomSeeds, $file_name);
-            $maes[] = (string)$optimized[0];
+            $maes[] = (string)(number_format((float)$optimized[0]));
         }
     }
     $countAllMAE = array_count_values($maes);
