@@ -457,39 +457,44 @@ $fileNames = [
     'filenames/seeds_cpso_mucpso29.txt'
 ];
 
-foreach ($fileNames as $file_name) {
-    for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 100; $numberOfRandomSeeds += 10) {
-        $combinations = get_combinations(
-            array(
-                'chaotic' => array('sinu'),
-                'particle_size' => array($numberOfRandomSeeds)
-            )
-        );
+$max_iter = 61;
+$step_size = 6;
 
-        foreach ($combinations as $key => $combination) {
-            $MAX_ITER = 40;
-            $MAX_TRIAL = 1;
-            $swarm_size = $combination['particle_size'];
-            $max_counter = 100000;
+for ($iter = 1; $iter <= $max_iter; $iter += $step_size) {
+    foreach ($fileNames as $file_name) {
+        for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 100; $numberOfRandomSeeds += 10) {
+            $combinations = get_combinations(
+                array(
+                    'chaotic' => array('sinu'),
+                    'particle_size' => array($numberOfRandomSeeds)
+                )
+            );
 
-            $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
-            $optimized = $mpucwPSO->finishing($MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
-            $maes[] = (string)(number_format((float)$optimized[0], 1));
+            foreach ($combinations as $key => $combination) {
+                $MAX_ITER = $iter;
+                $MAX_TRIAL = 1;
+                $swarm_size = $combination['particle_size'];
+                $max_counter = 100000;
+
+                $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
+                $optimized = $mpucwPSO->finishing($MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
+                $maes[] = (string)(number_format((float)$optimized[0], 1));
+            }
         }
-    }
-    echo '<p>';
-    $countAllMAE = array_count_values($maes);
-    print_r($countAllMAE);
-    echo '<p>';
-    $maxStagnantValue = max($countAllMAE);
-    $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
-    echo $maxStagnantValue;
-    echo '<br>';
-    echo $indexMaxStagnantValue;
+        echo '<p>';
+        $countAllMAE = array_count_values($maes);
+        print_r($countAllMAE);
+        echo '<p>';
+        $maxStagnantValue = max($countAllMAE);
+        $indexMaxStagnantValue = array_search($maxStagnantValue, $countAllMAE);
+        echo $maxStagnantValue;
+        echo '<br>';
+        echo $indexMaxStagnantValue;
 
-    $data = array($maxStagnantValue, $indexMaxStagnantValue);
-    $fp = fopen('../results/ardi2021.txt', 'a');
-    fputcsv($fp, $data);
-    fclose($fp);
-    $maes = [];
+        $data = array($maxStagnantValue, $indexMaxStagnantValue);
+        $fp = fopen('../results/ardi2021.txt', 'a');
+        fputcsv($fp, $data);
+        fclose($fp);
+        $maes = [];
+    }
 }
