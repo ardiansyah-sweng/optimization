@@ -531,10 +531,10 @@ $fileNames = [
     'seeds/mpso_mucpso/seeds29.txt',
 ];
 
-$max_iter = 61;
+$max_iter = 60;
 $step_size = 4;
 
-for ($iter = 1; $iter <= $max_iter; $iter += $step_size) {
+for ($iter = $step_size; $iter <= $max_iter; $iter += $step_size) {
     foreach ($fileNames as $file_name) {
         for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 10; $numberOfRandomSeeds += 10) {
             $combinations = get_combinations(

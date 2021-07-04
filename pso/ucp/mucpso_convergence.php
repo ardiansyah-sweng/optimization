@@ -578,10 +578,10 @@ $fileNames = [
     'seeds/mpso_mucpso/seeds29.txt',
 ];
 
-$max_iter = 61;
+$max_iter = 100;
 $step_size = 4;
 
-for ($iter = 1; $iter <= $max_iter; $iter += $step_size) {
+for ($iter = 1; $iter <= $max_iter; $iter++) {
     foreach ($fileNames as $file_name) {
         for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 10; $numberOfRandomSeeds += 10) {
 

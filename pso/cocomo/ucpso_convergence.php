@@ -71,7 +71,6 @@ class MPUCWPSO
         $X1 = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
 
         foreach ($R as $key => $r) {
-
             $A = $X1 + floatval($r[0]) / $n * ($this->upper_bound - $this->lower_bound);
 
             if ($A > $this->upper_bound) {
@@ -84,6 +83,20 @@ class MPUCWPSO
             $ret[$key] = ['A' => $A];
         }
         return $ret;
+    }
+
+    function RIW($particle, $particles)
+    {
+        array_multisort(array_column($particles, 'ae'), SORT_ASC, $particles);
+        $rank = array_search($particle['ae'], array_column($particles, 'ae'));
+        $b = 1;
+        if ($rank <= ($this->swarm_size / 4)) {
+            $b = 2 / 3;
+        }
+        if ($rank >= (3 * $this->swarm_size) / 4) {
+            $b = 1.5;
+        }
+        return $b;
     }
 
     function velocity($parameters)
@@ -123,10 +136,11 @@ class MPUCWPSO
             $chaoticFactory = new ChaoticFactory();
             $chaos = $chaoticFactory->initializeChaotic($chaotic_type, $iterasi);
             $B = $this->randomzeroToOne();
+            $r1 = $this->randomZeroToOne();
+            $r2 = $this->randomZeroToOne();
+
             if ($iterasi == 0) {
-                $R1[$iterasi + 1] = $chaos->chaotic(0.7);
-                $R2[$iterasi + 1] = $chaos->chaotic(0.7);
-                $r[$iterasi + 1] = $chaos->chaotic(0.7);
+                $I[$iterasi + 1] = $iterasi;
                 $velocity[$iterasi + 1] = $this->randomzeroToOne();
 
                 ##Generate Population
@@ -145,68 +159,47 @@ class MPUCWPSO
                     ];
                 }
                 $Pbest[$iterasi + 1] = $particles[$iterasi + 1];
-
-                $min = min(array_column($Pbest[$iterasi + 1], 'ae'));
-                $index = array_search($min, $Pbest[$iterasi + 1]);
+                foreach ($Pbest[$iterasi + 1] as $pbest) {
+                    $pbests[] = $pbest['ae'];
+                }
+                $index = array_search(min($pbests), array_column($Pbest[$iterasi + 1], 'ae'));
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
-
-                //Fungsi SPbest
-                $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-
-                $counter = 0;
-                while ($counter < $max_counter) {
-                    if ($CPbestIndex1 == $CPbestIndex2) {
-                        $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                        $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-                        $counter = 0;
-                    } else {
-                        break;
-                    }
-                }
-
-                if ($CPbestIndex1 != $CPbestIndex2) {
-                    if ($CPbest1['ae'] < $CPbest2['ae']) {
-                        $CPbest = $CPbest1;
-                    }
-                    if ($CPbest1['ae'] > $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    if ($CPbest1['ae'] == $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    //compared CPbest with all Pbest_i(t-1)
-                    foreach ($Pbest[$iterasi + 1] as $key => $val) {
-                        if ($CPbest['ae'] < $val['ae']) {
-                            $Pbest[$iterasi + 1][$key] = $CPbest;
-                        }
-                    }
-                }
-                $SPbest[$iterasi + 1] = $Pbest[$iterasi + 1];
             } // End of iterasi==0
 
             if ($iterasi > 0) {
-                $R1[$iterasi + 1] = $chaos->chaotic($R1[$iterasi]);
-                $R2[$iterasi + 1] = $chaos->chaotic($R2[$iterasi]);
-
-                //Inertia weight
-                $r[$iterasi + 1] = $chaos->chaotic($r[$iterasi]);
-                $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
+                    //Inertia weight
+                    $w_ini = $this->INERTIA_MAX;
+                    $w_fin = $this->INERTIA_MIN;
+
+                    $chaos->I = $I[$iterasi];
+                    $cosine = $chaos->chaotic($max_iter);
+                    $w_cos = ((($w_ini + $w_fin) / 2) + (($w_ini - $w_fin) / 2)) * $cosine;
+
+                    $b = $this->RIW($particles[$iterasi][$i], $particles[$iterasi]);
+                    $w = $b * $w_cos;
+
+                    if (($I[$iterasi] <= $max_iter) / 6) {
+                        $a = 4 / 3;
+                    }
+                    if (($max_iter / 6) < $I[$iterasi] && $I[$iterasi] <= (5 * $max_iter) / 6) {
+                        $a = 16 / 3;
+                    }
+                    if ((5 * $max_iter) / 6 < $I[$iterasi] && $I[$iterasi] <= $max_iter) {
+                        $a = 2 / 9;
+                    }
+                    $I[$iterasi + 1] = $I[$iterasi] + $a;
+
                     $parameters = [
                         'w' => $w,
                         'velocity' => $velocity[$iterasi],
                         'c1' => $this->C1,
                         'c2' => $this->C2,
-                        'r1' => $R1[$iterasi],
-                        'r2' => $R2[$iterasi],
-                        'pbest' => $SPbest[$iterasi][$i]['A'],
+                        'r1' => $r1,
+                        'r2' => $r2,
+                        'pbest' => $Pbest[$iterasi][$i]['A'],
                         'position' => $particles[$iterasi][$i]['A'],
                         'gbest' => $GBest[$iterasi]['A']
                     ];
@@ -248,46 +241,6 @@ class MPUCWPSO
                 $index = array_search($min_ae, $Pbest[$iterasi + 1]);
 
                 $GBest[$iterasi + 1] = $Pbest[$iterasi + 1][$index];
-
-                //Fungsi SPbest
-                $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-
-                $counter = 0;
-                while ($counter < $max_counter) {
-                    if ($CPbestIndex1 == $CPbestIndex2) {
-                        $CPbestIndex1 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbestIndex2 = array_rand($Pbest[$iterasi + 1]);
-                        $CPbest1 = $Pbest[$iterasi + 1][$CPbestIndex1];
-                        $CPbest2 = $Pbest[$iterasi + 1][$CPbestIndex2];
-                        $counter = 0;
-                    } else {
-                        break;
-                    }
-                }
-
-                if ($CPbestIndex1 != $CPbestIndex2) {
-                    if ($CPbest1['ae'] < $CPbest2['ae']) {
-                        $CPbest = $CPbest1;
-                    }
-                    if ($CPbest1['ae'] > $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    if ($CPbest1['ae'] == $CPbest2['ae']) {
-                        $CPbest = $CPbest2;
-                    }
-                    //compared CPbest with all Pbest_i(t-1)
-                    foreach ($SPbest[$iterasi] as $key => $val) {
-                        if ($CPbest['ae'] < $val['ae']) {
-                            $Pbest[$iterasi + 1][$key] = $CPbest;
-                        } else {
-                            $Pbest[$iterasi + 1][$key] = $val;
-                        }
-                    }
-                }
-                $SPbest[$iterasi + 1] = $Pbest[$iterasi + 1];
             } // End of iterasi > 0
 
             //Fitness value evaluation
@@ -376,8 +329,7 @@ class MPUCWPSO
                     $results[] = $this->Main($projects, $max_iter, $swarm_size, $max_counter, $chaotic_type, $initial_populations);
                 }
             }
-            $mae = Arithmatic::mae($results);
-            $ret[] = $mae;
+            $ret[] = Arithmatic::mae($results);
         }
         return $ret;
     }
@@ -425,48 +377,48 @@ function get_combinations($arrays)
 
 $maes = [];
 $fileNames = [
-    'filenames/seeds_cpso_mucpso0.txt',
-    'filenames/seeds_cpso_mucpso1.txt',
-    'filenames/seeds_cpso_mucpso2.txt',
-    'filenames/seeds_cpso_mucpso3.txt',
-    'filenames/seeds_cpso_mucpso4.txt',
-    'filenames/seeds_cpso_mucpso5.txt',
-    'filenames/seeds_cpso_mucpso6.txt',
-    'filenames/seeds_cpso_mucpso7.txt',
-    'filenames/seeds_cpso_mucpso8.txt',
-    'filenames/seeds_cpso_mucpso9.txt',
-    'filenames/seeds_cpso_mucpso10.txt',
-    'filenames/seeds_cpso_mucpso11.txt',
-    'filenames/seeds_cpso_mucpso12.txt',
-    'filenames/seeds_cpso_mucpso13.txt',
-    'filenames/seeds_cpso_mucpso14.txt',
-    'filenames/seeds_cpso_mucpso15.txt',
-    'filenames/seeds_cpso_mucpso16.txt',
-    'filenames/seeds_cpso_mucpso17.txt',
-    'filenames/seeds_cpso_mucpso18.txt',
-    'filenames/seeds_cpso_mucpso19.txt',
-    'filenames/seeds_cpso_mucpso20.txt',
-    'filenames/seeds_cpso_mucpso21.txt',
-    'filenames/seeds_cpso_mucpso22.txt',
-    'filenames/seeds_cpso_mucpso23.txt',
-    'filenames/seeds_cpso_mucpso24.txt',
-    'filenames/seeds_cpso_mucpso25.txt',
-    'filenames/seeds_cpso_mucpso26.txt',
-    'filenames/seeds_cpso_mucpso27.txt',
-    'filenames/seeds_cpso_mucpso28.txt',
-    'filenames/seeds_cpso_mucpso29.txt'
+    'filenames/ucpso/seeds_ucpso0.txt',
+    'filenames/ucpso/seeds_ucpso1.txt',
+    'filenames/ucpso/seeds_ucpso2.txt',
+    'filenames/ucpso/seeds_ucpso3.txt',
+    'filenames/ucpso/seeds_ucpso4.txt',
+    'filenames/ucpso/seeds_ucpso5.txt',
+    'filenames/ucpso/seeds_ucpso6.txt',
+    'filenames/ucpso/seeds_ucpso7.txt',
+    'filenames/ucpso/seeds_ucpso8.txt',
+    'filenames/ucpso/seeds_ucpso9.txt',
+    'filenames/ucpso/seeds_ucpso10.txt',
+    'filenames/ucpso/seeds_ucpso11.txt',
+    'filenames/ucpso/seeds_ucpso12.txt',
+    'filenames/ucpso/seeds_ucpso13.txt',
+    'filenames/ucpso/seeds_ucpso14.txt',
+    'filenames/ucpso/seeds_ucpso15.txt',
+    'filenames/ucpso/seeds_ucpso16.txt',
+    'filenames/ucpso/seeds_ucpso17.txt',
+    'filenames/ucpso/seeds_ucpso18.txt',
+    'filenames/ucpso/seeds_ucpso19.txt',
+    'filenames/ucpso/seeds_ucpso20.txt',
+    'filenames/ucpso/seeds_ucpso21.txt',
+    'filenames/ucpso/seeds_ucpso22.txt',
+    'filenames/ucpso/seeds_ucpso23.txt',
+    'filenames/ucpso/seeds_ucpso24.txt',
+    'filenames/ucpso/seeds_ucpso25.txt',
+    'filenames/ucpso/seeds_ucpso26.txt',
+    'filenames/ucpso/seeds_ucpso27.txt',
+    'filenames/ucpso/seeds_ucpso28.txt',
+    'filenames/ucpso/seeds_ucpso29.txt',
 ];
 
 $max_iter = 60;
-$step_size = 6;
+$step_size = 2;
 
 for ($iter = $step_size; $iter <= $max_iter; $iter += $step_size) {
     foreach ($fileNames as $file_name) {
-        for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 100; $numberOfRandomSeeds += 10) {
+        for ($numberOfRandomSeeds = 10; $numberOfRandomSeeds <= 70; $numberOfRandomSeeds += 10) {
             $combinations = get_combinations(
                 array(
-                    'chaotic' => array('sinu'),
-                    'particle_size' => array($numberOfRandomSeeds)
+                    'chaotic' => array('cosine'),
+                    'particle_size' => array($numberOfRandomSeeds),
                 )
             );
 
@@ -478,10 +430,9 @@ for ($iter = $step_size; $iter <= $max_iter; $iter += $step_size) {
 
                 $mpucwPSO = new MPUCWPSO($swarm_size, $MAX_TRIAL, $scales);
                 $optimized = $mpucwPSO->finishing($MAX_ITER, $swarm_size, $max_counter, $combination['chaotic'], $MAX_TRIAL, $numberOfRandomSeeds, $file_name);
-                $maes[] = (string)(number_format((float)$optimized[0], 1));
+                $maes[] = (string)(number_format((float)$optimized[0]));
             }
         }
-        echo '<p>';
         $countAllMAE = array_count_values($maes);
         print_r($countAllMAE);
         echo '<p>';
@@ -492,7 +443,7 @@ for ($iter = $step_size; $iter <= $max_iter; $iter += $step_size) {
         echo $indexMaxStagnantValue;
 
         $data = array($iter, $maxStagnantValue, $indexMaxStagnantValue);
-        $fp = fopen('../results/ardi2021.txt', 'a');
+        $fp = fopen('../results/zhang2021.txt', 'a');
         fputcsv($fp, $data);
         fclose($fp);
         $maes = [];
